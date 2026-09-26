@@ -17,8 +17,7 @@ import { pickRandomFromWatchlist } from '../entertainment/random';
 import { toIsoDate } from '../routine/engine';
 import { SpinTimer } from '../spin/SpinTimer';
 import { planSpinDuration, formatMinutes, DEFAULT_CUTOFF_HM } from '../spin/timeBudget';
-import { continueSuggestion, logEpisodesWatched } from '../entertainment/continue';
-import { watchlistItemsRepo } from '../data/repository';
+import { continueSuggestion } from '../entertainment/continue';
 import '../spin/spin.css';
 
 type Tab = 'spin' | 'wheels' | 'history';
@@ -188,17 +187,11 @@ export default function Spin() {
         durationMinutes: actual ?? row?.durationMinutes,
         completed: true,
       });
-      const wid = (window as unknown as { __spinWatchId?: string }).__spinWatchId;
-      if (wid) {
-        // Real progress: +1 episode when a watch session ends
-        await logEpisodesWatched(wid, 1);
-        const items = await watchlistItemsRepo.list();
-        const it = items.find((i) => i.id === wid);
-        if (it) setBudgetNote(`Saved · ${continueSuggestion(it)}`);
-        delete (window as unknown as { __spinWatchId?: string }).__spinWatchId;
-      }
+      // History only — episode +1 is manual in Entertainment (+1 ep), not auto
+      delete (window as unknown as { __spinWatchId?: string }).__spinWatchId;
       setActiveHistoryId(null);
       setTimerMinutes(null);
+      setBudgetNote((n) => (n ? `${n} · saved to today's history` : "Saved to today's history"));
     },
     [activeHistoryId]
   );
@@ -394,6 +387,53 @@ export default function Spin() {
                 <Button variant="primary" onClick={() => void finishActiveSession()}>
                   Mark session finished (real time)
                 </Button>
+              )}
+              {/* DEMO — instant history without waiting */}
+              {result && !result.childWheelId && (
+                <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <Button
+                    variant="secondary"
+                    disabled={busy}
+                    onClick={async () => {
+                      if (!result || !currentWheel) return;
+                      setBusy(true);
+                      try {
+                        const now = new Date();
+                        const hours = 3;
+                        const mins = hours * 60;
+                        const started = new Date(now.getTime() - mins * 60000);
+                        await spinHistoriesRepo.create({
+                          date: toIsoDate(now),
+                          wheelId: currentWheel.id,
+                          wheelName: currentWheel.name,
+                          optionId: result.id,
+                          optionLabel: watchlistPickLabel || result.label,
+                          path: [...path, watchlistPickLabel || result.label],
+                          durationMinutes: mins,
+                          plannedMinutes: result.durationMinutes ?? mins,
+                          startedAt: started.toISOString(),
+                          endedAt: now.toISOString(),
+                          actualMinutes: mins,
+                          completed: true,
+                        });
+                        setBudgetNote(`DEMO · logged ${hours}h to today's history (no episode +1)`);
+                        setTimerMinutes(null);
+                        setActiveHistoryId(null);
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  >
+                    DEMO — log as watched 3 hours
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    disabled={busy || !activeHistoryId}
+                    onClick={() => void finishActiveSession(timerMinutes ?? undefined)}
+                  >
+                    DEMO — complete current timer now
+                  </Button>
+                </div>
               )}
               <div className="sp-actions">
                 {result.childWheelId ? (
@@ -705,13 +745,14 @@ export default function Spin() {
   }
 
   function renderHistory() {
-    const list = (history ?? []).filter((h) => !h.deleted);
+    const todayIso = toIsoDate(new Date());
+    const list = (history ?? []).filter((h) => !h.deleted && h.date === todayIso);
     if (list.length === 0) {
       return (
         <EmptyState
           icon="📜"
           title="No spins logged"
-          description="Complete a leaf activity after spinning to build history."
+          description="Today only — spin and finish a session to log it here."
         />
       );
     }

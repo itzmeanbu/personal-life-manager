@@ -8,7 +8,7 @@ export type DayName =
 export interface TodayInfo {
   date: Date;
   dayName: DayName;
-  dayIndex: number; // 0 = Sunday
+  dayIndex: number;
   isWeekend: boolean;
   isSunday: boolean;
   isSaturday: boolean;
@@ -19,29 +19,42 @@ const DAY_NAMES: DayName[] = [
   'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
 ];
 
+/** English + romanized Korean/Japanese + a bit of Spanish/French — all Latin script. */
 const GREETINGS = {
   lateNight: [
-    'Still up?', '¿Aún despierto?', 'Encore debout ?', 'இன்னும் விழித்திருக்கிறாயா?',
-    'अभी भी जाग रहे हो?', 'まだ起きてるの？', 'Noch wach?', 'Ancora sveglio?',
-    'Ainda acordado?', '아직 안 자?', 'Ещё не спишь?',
+    'Still up?',
+    'Annyeong — still awake?',
+    'Oyasumi soon?',
+    'Hola, still here?',
+    'Bonjour from the night',
   ],
   morning: [
-    'Good morning', 'Buenos días', 'Bonjour', 'காலை வணக்கம்', 'शुभ प्रभात',
-    'おはようございます', 'Guten Morgen', 'Buongiorno', 'Bom dia', '좋은 아침',
-    'Доброе утро', 'صباح الخير',
+    'Good morning',
+    'Annyeonghaseyo',
+    'Ohayo',
+    'Hola',
+    'Bonjour',
   ],
   afternoon: [
-    'Good afternoon', 'Buenas tardes', 'Bon après-midi', 'மதிய வணக்கம்', 'नमस्कार',
-    'こんにちは', 'Guten Tag', 'Buon pomeriggio', 'Boa tarde', '좋은 오후', 'Добрый день',
+    'Good afternoon',
+    'Annyeong',
+    'Konnichiwa',
+    'Hola',
+    'Bonjour',
   ],
   evening: [
-    'Good evening', 'Buenas noches', 'Bonsoir', 'மாலை வணக்கம்', 'शुभ संध्या',
-    'こんばんは', 'Guten Abend', 'Buonasera', 'Boa noite', '좋은 저녁', 'Добрый вечер',
+    'Good evening',
+    'Annyeonghaseyo',
+    'Konbanwa',
+    'Hola',
+    'Bonsoir',
   ],
   night: [
-    'Winding down', 'Hora de descansar', 'On se détend', 'ஓய்வெடுக்கும் நேரம்',
-    'आराम का समय', 'そろそろ休もう', 'Zeit zum Entspannen', 'Momento di rilassarsi',
-    'Hora de relaxar', '쉴 시간', 'Пора отдыхать',
+    'Winding down',
+    'Jal jayo',
+    'Oyasumi',
+    'Buenas noches',
+    'Bonne nuit',
   ],
 };
 
@@ -57,10 +70,6 @@ function getGreeting(hour: number): string {
   return pickRandom(GREETINGS.night);
 }
 
-/**
- * Single source of truth for "what day is it".
- * Respects DEMO day override when set. Greeting randomly chosen each evaluation.
- */
 export function useToday(): TodayInfo {
   const [tick, setTick] = useState(0);
   useEffect(() => subscribeDemoDay(() => setTick((t) => t + 1)), []);
