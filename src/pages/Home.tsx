@@ -3,8 +3,8 @@
  * Spin phase gets a big CTA. End-of-day asks what tomorrow looks like.
  */
 import { useCallback, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { Link } from 'react-router-dom';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { useToday } from '../hooks/useToday';
@@ -13,6 +13,8 @@ import { useDailyAgenda } from '../routine/hooks';
 import { deriveStatus, STATUS_LABELS } from '../routine/engine';
 import { markPhaseComplete, isActionPhase } from '../day/phaseEngine';
 import { forceRebuildToday } from '../day/migrateWeekend';
+import { pickEncouragement } from '../home/encourage';
+import { getContinueCandidates } from '../entertainment/continue';
 import { dayAssignmentsRepo } from '../data/repository';
 import { toIsoDate } from '../routine/engine';
 import { AppLogo } from '../appearance/AppLogo';
@@ -33,6 +35,8 @@ export default function Home() {
 
   const { setStatus, clearStatus } = useDailyAgenda(today.date);
   const profiles = useAllDayProfiles();
+  const nudgeText = useMemo(() => pickEncouragement(today.isWeekend ? 'weekend' : 'general'), [today.isWeekend]);
+  const continueWatch = useLiveQuery(() => getContinueCandidates(2), [], []);
   const [savingTomorrow, setSavingTomorrow] = useState(false);
   const [tomorrowSaved, setTomorrowSaved] = useState<string | null>(null);
 
@@ -314,6 +318,22 @@ export default function Home() {
       </header>
 
       <div className="page-shell__content">
+        <Card style={{ marginBottom: 12, borderLeft: '3px solid var(--color-accent)' }}>
+          <p style={{ margin: 0, fontSize: 'var(--text-sm)' }}>{nudgeText}</p>
+        </Card>
+        {continueWatch && continueWatch.length > 0 && (
+          <Card style={{ marginBottom: 12 }}>
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>Continue watching</div>
+            {continueWatch.map(({ item, suggestion }) => (
+              <div key={item.id} style={{ marginBottom: 8 }}>
+                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-accent)' }}>{suggestion}</div>
+              </div>
+            ))}
+            <Link to="/entertainment">
+              <Button variant="ghost">Open list</Button>
+            </Link>
+          </Card>
+        )}
         {/* SPIN / FREE TIME phase */}
         {action && (
           <Card style={{ marginBottom: 16, textAlign: 'center', padding: '24px 16px' }}>

@@ -17,6 +17,8 @@ import { pickRandomFromWatchlist } from '../entertainment/random';
 import { toIsoDate } from '../routine/engine';
 import { SpinTimer } from '../spin/SpinTimer';
 import { planSpinDuration, formatMinutes, DEFAULT_CUTOFF_HM } from '../spin/timeBudget';
+import { continueSuggestion, logEpisodesWatched } from '../entertainment/continue';
+import { watchlistItemsRepo } from '../data/repository';
 import '../spin/spin.css';
 
 type Tab = 'spin' | 'wheels' | 'history';
@@ -120,7 +122,10 @@ export default function Spin() {
         if (pick) {
           label = `${result.label}: ${pick.item.title}`;
           optionDuration = pick.bingeMinutes;
-          setWatchlistPickLabel(label);
+          setWatchlistPickLabel(`${label} — ${continueSuggestion(pick.item)}`);
+          // remember item id on label is messy; store via budgetNote suffix
+          setBudgetNote(continueSuggestion(pick.item));
+          (window as unknown as { __spinWatchId?: string }).__spinWatchId = pick.item.id;
         } else {
           label = `${result.label}: (watchlist empty — add titles in Entertainment)`;
           setWatchlistPickLabel(label);
@@ -183,6 +188,15 @@ export default function Spin() {
         durationMinutes: actual ?? row?.durationMinutes,
         completed: true,
       });
+      const wid = (window as unknown as { __spinWatchId?: string }).__spinWatchId;
+      if (wid) {
+        // Real progress: +1 episode when a watch session ends
+        await logEpisodesWatched(wid, 1);
+        const items = await watchlistItemsRepo.list();
+        const it = items.find((i) => i.id === wid);
+        if (it) setBudgetNote(`Saved · ${continueSuggestion(it)}`);
+        delete (window as unknown as { __spinWatchId?: string }).__spinWatchId;
+      }
       setActiveHistoryId(null);
       setTimerMinutes(null);
     },

@@ -41,7 +41,12 @@ export async function pickRandomFromWatchlist(opts?: {
   }
   if (items.length === 0) return null;
 
-  const item = items[Math.floor(Math.random() * items.length)];
+  // Prefer titles already in progress so spin continues real progress
+  const inProgress = items.filter(
+    (i) => i.status === 'watching' || (i.episode != null && i.episode > 0)
+  );
+  const pool = inProgress.length > 0 ? inProgress : items;
+  const item = pool[Math.floor(Math.random() * pool.length)];
   const bingeMinutes =
     item.bingeMinutes ??
     category?.defaultBingeMinutes ??

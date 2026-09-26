@@ -509,9 +509,16 @@ export interface WatchlistItem extends BaseEntity {
   /** watched = done; unwatched covers planned + in progress unless status set. */
   watched: boolean;
   status?: 'planned' | 'watching' | 'completed' | 'dropped';
-  /** Current episode (series/anime/k-drama). */
+  /**
+   * Last episode you finished (1-based).
+   * Continue from episode + 1. Example: episode=2 → "continue from ep 3".
+   */
   episode?: number;
   totalEpisodes?: number;
+  /** ISO timestamp of last time you logged progress — real, not invented. */
+  lastWatchedAt?: string;
+  /** Short note like "paused mid-ep" — optional. */
+  leftOffNote?: string;
   rating?: number;
   notes?: string;
   /** Optional override binge/session minutes for this title. */

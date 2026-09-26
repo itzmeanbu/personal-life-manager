@@ -19,6 +19,13 @@ import {
   DEFAULT_ENTERTAINMENT_CONFIG,
 } from '../entertainment/settings';
 import { pickRandomFromWatchlist } from '../entertainment/random';
+import {
+  continueSuggestion,
+  encourageWatch,
+  logEpisodesWatched,
+  nextEpisode,
+  getContinueCandidates,
+} from '../entertainment/continue';
 import '../entertainment/entertainment.css';
 
 type Tab = 'list' | 'categories' | 'settings';
@@ -32,6 +39,7 @@ export default function Entertainment() {
   const [newTitle, setNewTitle] = useState('');
   const [editItemId, setEditItemId] = useState<string | null>(null);
   const [randomResult, setRandomResult] = useState<string | null>(null);
+  const continueCards = useLiveQuery(() => getContinueCandidates(4), [seeded], []);
 
   useEffect(() => {
     seedEntertainmentCategoriesIfNeeded().then(() => setSeeded(true));
@@ -88,6 +96,15 @@ export default function Entertainment() {
       watched,
       status: watched ? 'completed' : 'planned',
     });
+  };
+
+  const logEps = async (id: string, count: number) => {
+    setBusy(true);
+    try {
+      await logEpisodesWatched(id, count);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const updateItem = async (id: string, patch: Partial<WatchlistItem>) => {
@@ -222,6 +239,35 @@ export default function Entertainment() {
             </Card>
           )}
 
+          {continueCards && continueCards.length > 0 && (
+            <>
+              <SectionHeader title="Continue where you left off" />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+                {continueCards.map(({ item, category, suggestion, nudge }) => (
+                  <Card key={item.id}>
+                    <div style={{ fontWeight: 600 }}>
+                      {category?.icon ? `${category.icon} ` : ''}
+                      {item.title}
+                    </div>
+                    <p style={{ margin: '6px 0 4px', color: 'var(--color-accent)' }}>{suggestion}</p>
+                    <p className="en-muted" style={{ margin: '0 0 10px' }}>{nudge}</p>
+                    <div className="en-actions">
+                      <Button variant="primary" disabled={busy} onClick={() => logEps(item.id, 1)}>
+                        +1 ep (now at {nextEpisode(item)})
+                      </Button>
+                      <Button variant="secondary" disabled={busy} onClick={() => logEps(item.id, 2)}>
+                        +2 eps
+                      </Button>
+                      <button type="button" className="en-link" onClick={() => setEditItemId(item.id)}>
+                        Edit
+                      </button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </>
+          )}
+
           <SectionHeader title="List" />
           {listForCat.length === 0 ? (
             <EmptyState
@@ -308,8 +354,8 @@ export default function Entertainment() {
                       <div>
                         <div style={{ fontWeight: 600 }}>{item.title}</div>
                         <div className="en-muted">
-                          {item.episode != null
-                            ? `Ep ${item.episode}${item.totalEpisodes ? `/${item.totalEpisodes}` : ''}`
+                          {item.episode != null || item.status === 'watching'
+                            ? continueSuggestion(item)
                             : ''}
                           {item.notes ? ` · ${item.notes}` : ''}
                         </div>
@@ -320,6 +366,16 @@ export default function Entertainment() {
                         >
                           {item.watched ? 'Watched' : 'Unwatched'}
                         </span>
+                        {!item.watched && (
+                          <>
+                            <button type="button" className="en-link" onClick={() => logEps(item.id, 1)}>
+                              +1 ep
+                            </button>
+                            <button type="button" className="en-link" onClick={() => logEps(item.id, 2)}>
+                              +2 eps
+                            </button>
+                          </>
+                        )}
                         <button type="button" className="en-link" onClick={() => toggleWatched(item)}>
                           Toggle
                         </button>
