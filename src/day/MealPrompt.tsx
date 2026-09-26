@@ -62,11 +62,6 @@ export function MealPrompt({ date = new Date() }: { date?: Date }) {
 
   const now = new Date();
   const ask = shouldAskMeal(now, state);
-  const alertActive =
-    state.ate === false &&
-    state.eatAtHm &&
-    shouldAlertEat(now, { ...state, remindedAt: undefined }) ||
-    (state.remindedAt && state.ate !== true && state.eatAtHm);
   const free = isFreeTimeUnlocked(now, state);
 
   const markAte = async () => {
