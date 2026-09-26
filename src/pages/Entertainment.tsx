@@ -21,7 +21,6 @@ import {
 import { pickRandomFromWatchlist } from '../entertainment/random';
 import {
   continueSuggestion,
-  encourageWatch,
   logEpisodesWatched,
   nextEpisode,
   getContinueCandidates,
