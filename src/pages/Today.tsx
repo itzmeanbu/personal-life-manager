@@ -66,8 +66,16 @@ export default function Today() {
         <Card>
           <strong>Weekend Mode</strong>
           <p style={{ color: 'var(--color-text-secondary)', marginTop: 4 }}>
-            It's {today.dayName} — check the Weekend module for weekend-only plans.
+            It's {today.dayName} — do morning checklist on Home, then free time.
           </p>
+          <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Link to="/">
+              <Button variant="secondary">Day Journey (Home)</Button>
+            </Link>
+            <Link to="/spin">
+              <Button variant="primary">Spin Wheel</Button>
+            </Link>
+          </div>
         </Card>
       )}
       {today.isSunday && (

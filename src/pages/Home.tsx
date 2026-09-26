@@ -11,8 +11,8 @@ import { useToday } from '../hooks/useToday';
 import { useDayProgress, useAllDayProfiles } from '../day/hooks';
 import { useDailyAgenda } from '../routine/hooks';
 import { deriveStatus, STATUS_LABELS } from '../routine/engine';
-import { markPhaseComplete } from '../day/phaseEngine';
-import { isActionPhase } from '../day/phaseEngine';
+import { markPhaseComplete, isActionPhase } from '../day/phaseEngine';
+import { forceRebuildToday } from '../day/migrateWeekend';
 import { dayAssignmentsRepo } from '../data/repository';
 import { toIsoDate } from '../routine/engine';
 import { AppLogo } from '../appearance/AppLogo';
@@ -119,6 +119,56 @@ export default function Home() {
     );
   }
 
+  const noPhases =
+    !progress ||
+    progress.phaseIdsToday.length === 0 ||
+    (!currentPhase && (progress.completedPhaseIds?.length ?? 0) === 0);
+
+  if (noPhases && !loading) {
+    return (
+      <div className="page-shell day-journey">
+        <header className="page-shell__header" style={{ flexDirection: 'column', gap: 4 }}>
+          <AppLogo size={36} />
+          <span style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)' }}>
+            {today.greeting}
+          </span>
+          <h1 className="page-shell__title" style={{ fontSize: 'var(--text-2xl)' }}>
+            {today.dayName}
+          </h1>
+        </header>
+        <div className="page-shell__content">
+          <Card style={{ textAlign: 'center', padding: '24px 16px', marginBottom: 16 }}>
+            <div style={{ fontSize: 40, marginBottom: 8 }}>{today.isWeekend ? '🎡' : '☀️'}</div>
+            <p style={{ fontWeight: 600, margin: '0 0 8px' }}>
+              {today.isWeekend ? 'Weekend journey not loaded yet' : 'No phases for today yet'}
+            </p>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', margin: '0 0 16px' }}>
+              Facial / morning stuff runs every day. Sat/Sun also get Spin & Free Time after morning.
+              Tap to load today.
+            </p>
+            <Button
+              variant="primary"
+              onClick={async () => {
+                await forceRebuildToday(today.date);
+                await refresh();
+              }}
+            >
+              Load today's journey
+            </Button>
+          </Card>
+          {today.isWeekend && (
+            <Card style={{ textAlign: 'center' }}>
+              <p style={{ margin: '0 0 12px' }}>Or jump straight to the wheel</p>
+              <Link to="/spin">
+                <Button variant="secondary">Open Spin Wheel</Button>
+              </Link>
+            </Card>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   /* -------------------- ALL DONE -------------------- */
   if (isComplete || !currentPhase) {
     const quickProfiles = profiles.filter((p) => p.enabled).slice(0, 6);
@@ -141,6 +191,22 @@ export default function Home() {
             <p style={{ color: 'var(--color-text-secondary)', marginTop: 8, marginBottom: 0 }}>
               Rest well. A new journey starts at midnight.
             </p>
+            <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {today.isWeekend && (
+                <Link to="/spin">
+                  <Button variant="secondary">Open Spin Wheel</Button>
+                </Link>
+              )}
+              <Button
+                variant="ghost"
+                onClick={async () => {
+                  await forceRebuildToday(today.date);
+                  await refresh();
+                }}
+              >
+                Restart today's journey
+              </Button>
+            </div>
           </Card>
 
           <h2 style={{ fontSize: 'var(--text-base)', margin: '0 0 8px' }}>

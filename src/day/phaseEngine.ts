@@ -91,11 +91,23 @@ export async function getOrCreateDayProgress(date: Date): Promise<DayProgress> {
   const existing = (await dayProgressRepo.list()).find(
     (d) => d.date === iso && !d.deleted
   );
-  if (existing) return existing;
 
   const phases = await resolvePhasesForDate(date);
   const phaseIds = phases.map((p) => p.id);
   const firstId = phaseIds[0] ?? null;
+
+  if (existing) {
+    const needsRebuild = existing.phaseIdsToday.length === 0 && phaseIds.length > 0;
+    if (needsRebuild) {
+      const updated = await dayProgressRepo.update(existing.id, {
+        phaseIdsToday: phaseIds,
+        currentPhaseId: firstId,
+        completedPhaseIds: [],
+      });
+      return updated ?? { ...existing, phaseIdsToday: phaseIds, currentPhaseId: firstId, completedPhaseIds: [] };
+    }
+    return existing;
+  }
 
   const row: Omit<DayProgress, 'id' | 'createdAt' | 'updatedAt' | 'deleted' | 'syncedAt'> = {
     date: iso,
