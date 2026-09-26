@@ -263,6 +263,11 @@ export default function Home() {
               >
                 <span className="day-profile-tile__icon">{p.icon ?? '📅'}</span>
                 <span className="day-profile-tile__name">{p.name}</span>
+                {tileHint(p.systemKey) ? (
+                  <span className="day-profile-tile__hint" style={{ fontSize: 11, opacity: 0.75 }}>
+                    {tileHint(p.systemKey)}
+                  </span>
+                ) : null}
               </button>
             ))}
           </div>
