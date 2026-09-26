@@ -32,7 +32,7 @@ const DEFAULT_ROUTINES: SeedRoutine[] = [
   { title: 'College', category: 'College', kind: 'recurring', cadence: 'weekdays', activeDays: WEEKDAYS, time: '09:00', durationMinutes: 450, enabled: true, archived: false, reminder: { enabled: false, offsetMinutes: 0 }, moduleTag: 'college' },
   { title: 'Bus home', category: 'Commute', kind: 'recurring', cadence: 'weekdays', activeDays: WEEKDAYS, time: '16:30', durationMinutes: 150, enabled: true, archived: false, reminder: { enabled: false, offsetMinutes: 0 }, moduleTag: 'college' },
   { title: 'Workout', category: 'Fitness', kind: 'recurring', cadence: 'weekdays', activeDays: WEEKDAYS, time: '19:30', durationMinutes: 45, enabled: true, archived: false, reminder: { enabled: true, offsetMinutes: 5 }, moduleTag: 'workout' },
-  { title: 'Guitar practice', category: 'Music', kind: 'recurring', cadence: 'weekdays', activeDays: WEEKDAYS, time: '20:15', durationMinutes: 30, enabled: true, archived: false, reminder: { enabled: false, offsetMinutes: 0 }, moduleTag: 'guitar' },
+  { title: 'Guitar practice', category: 'Music', kind: 'recurring', cadence: 'custom', activeDays: [0, 1, 2, 3, 4, 5, 6], time: '20:15', durationMinutes: 30, enabled: true, archived: false, reminder: { enabled: false, offsetMinutes: 0 }, moduleTag: 'guitar' },
   { title: 'Bath', category: 'Hygiene', kind: 'recurring', cadence: 'weekdays', activeDays: WEEKDAYS, time: '20:45', durationMinutes: 15, enabled: true, archived: false, reminder: { enabled: false, offsetMinutes: 0 } },
   {
     title: 'Night hair & face routine',

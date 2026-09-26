@@ -16,6 +16,7 @@ import { eligibleOptions, pickOption, formatAvailability } from '../spin/engine'
 import { pickRandomFromWatchlist } from '../entertainment/random';
 import { toIsoDate } from '../routine/engine';
 import { SpinTimer } from '../spin/SpinTimer';
+import { planSpinDuration, formatMinutes, DEFAULT_CUTOFF_HM } from '../spin/timeBudget';
 import '../spin/spin.css';
 
 type Tab = 'spin' | 'wheels' | 'history';
@@ -29,6 +30,8 @@ export default function Spin() {
   const [rotation, setRotation] = useState(0);
   const [result, setResult] = useState<SpinWheelOption | null>(null);
   const [timerMinutes, setTimerMinutes] = useState<number | null>(null);
+  const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null);
+  const [budgetNote, setBudgetNote] = useState<string | null>(null);
   const [watchlistPickLabel, setWatchlistPickLabel] = useState<string | null>(null);
   const [editWheelId, setEditWheelId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -101,11 +104,11 @@ export default function Spin() {
         return;
       }
     }
-    // Leaf — optional random watchlist integration via tags
+    // Leaf — real session start; duration capped by time until evening cutoff
     setBusy(true);
     try {
       let label = result.label;
-      let duration = result.durationMinutes;
+      let optionDuration = result.durationMinutes;
       const tags = result.tags ?? [];
       if (tags.includes('random_watchlist') || tags.includes('random_kdrama') || tags.includes('random_anime')) {
         const systemKey = tags.includes('random_kdrama')
@@ -116,32 +119,81 @@ export default function Spin() {
         const pick = await pickRandomFromWatchlist({ systemKey });
         if (pick) {
           label = `${result.label}: ${pick.item.title}`;
-          duration = pick.bingeMinutes;
+          optionDuration = pick.bingeMinutes;
           setWatchlistPickLabel(label);
         } else {
           label = `${result.label}: (watchlist empty — add titles in Entertainment)`;
           setWatchlistPickLabel(label);
         }
       }
-      await spinHistoriesRepo.create({
-        date: toIsoDate(new Date()),
+
+      const now = new Date();
+      const budget = planSpinDuration(optionDuration, now, DEFAULT_CUTOFF_HM);
+      const planned = budget.plannedMinutes;
+
+      if (budget.capped) {
+        setBudgetNote(
+          `Capped to ${formatMinutes(planned)} (until ${DEFAULT_CUTOFF_HM} — had ${formatMinutes(optionDuration ?? 0)} on the option)`
+        );
+      } else if (budget.remainingUntilCutoff > 0) {
+        setBudgetNote(`${formatMinutes(budget.remainingUntilCutoff)} left until ${DEFAULT_CUTOFF_HM}`);
+      } else {
+        setBudgetNote(`Past ${DEFAULT_CUTOFF_HM} — logging real time only`);
+      }
+
+      const startedAt = now.toISOString();
+      const row = await spinHistoriesRepo.create({
+        date: toIsoDate(now),
         wheelId: currentWheel.id,
         wheelName: currentWheel.name,
         optionId: result.id,
         optionLabel: label,
         path: [...path, label],
-        durationMinutes: duration,
-        completed: true,
+        durationMinutes: planned || optionDuration,
+        plannedMinutes: optionDuration,
+        startedAt,
+        completed: false,
       });
-      if (duration && duration > 0) setTimerMinutes(duration);
+      setActiveHistoryId(row.id);
+      if (planned && planned > 0) setTimerMinutes(planned);
     } finally {
       setBusy(false);
     }
   }, [result, currentWheel, wheels, path]);
 
+  const finishActiveSession = useCallback(
+    async (actualMinutes?: number) => {
+      if (!activeHistoryId) {
+        setTimerMinutes(null);
+        return;
+      }
+      const endedAt = new Date().toISOString();
+      const rows = await spinHistoriesRepo.list();
+      const row = rows.find((h) => h.id === activeHistoryId);
+      let actual = actualMinutes;
+      if (actual == null && row?.startedAt) {
+        actual = Math.max(
+          1,
+          Math.round((Date.now() - new Date(row.startedAt).getTime()) / 60000)
+        );
+      }
+      await spinHistoriesRepo.update(activeHistoryId, {
+        endedAt,
+        actualMinutes: actual,
+        durationMinutes: actual ?? row?.durationMinutes,
+        completed: true,
+      });
+      setActiveHistoryId(null);
+      setTimerMinutes(null);
+    },
+    [activeHistoryId]
+  );
+
   const spinAgain = () => {
     setResult(null);
     setTimerMinutes(null);
+    setActiveHistoryId(null);
+    setBudgetNote(null);
     void doSpin();
   };
 
@@ -312,12 +364,22 @@ export default function Spin() {
               {watchlistPickLabel && (
                 <p className="sp-muted">Picked: {watchlistPickLabel}</p>
               )}
+              {budgetNote && (
+                <p className="sp-muted" style={{ marginTop: 8 }}>{budgetNote}</p>
+              )}
               {timerMinutes != null && timerMinutes > 0 && (
                 <SpinTimer
                   durationMinutes={timerMinutes}
                   label={watchlistPickLabel || result.label}
-                  onComplete={() => setTimerMinutes(null)}
+                  onComplete={(actualMin) => {
+                    void finishActiveSession(actualMin);
+                  }}
                 />
+              )}
+              {activeHistoryId && (timerMinutes == null || timerMinutes <= 0) && (
+                <Button variant="primary" onClick={() => void finishActiveSession()}>
+                  Mark session finished (real time)
+                </Button>
               )}
               <div className="sp-actions">
                 {result.childWheelId ? (
@@ -326,7 +388,7 @@ export default function Spin() {
                   </Button>
                 ) : (
                   <Button variant="primary" disabled={busy} onClick={acceptResult}>
-                    Done — log it
+                    Start session (real time)
                   </Button>
                 )}
                 <Button variant="secondary" onClick={spinAgain}>
@@ -655,7 +717,7 @@ export default function Spin() {
               </div>
               <div className="sp-muted">
                 {(h.path ?? []).join(' → ')}
-                {h.durationMinutes ? ` · ${h.durationMinutes} min` : ''}
+                {h.actualMinutes != null ? ` · lived ${h.actualMinutes}m` : h.durationMinutes ? ` · planned ${h.durationMinutes}m` : ''}{h.startedAt ? ` · ${new Date(h.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}{h.completed ? '' : ' · in progress'}
               </div>
             </div>
           </div>

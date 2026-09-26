@@ -1,6 +1,6 @@
 /**
- * Countdown timer for spun options that have durationMinutes.
- * Supports pause/resume and registers with DEMO force-complete.
+ * Countdown timer for spun options.
+ * Reports real elapsed minutes on complete (not a fake receipt).
  */
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Button } from '../components/ui/Button';
@@ -9,7 +9,8 @@ import { registerForceCompleteTimer } from '../demo/DemoTools';
 interface Props {
   durationMinutes: number;
   label: string;
-  onComplete?: () => void;
+  /** actual elapsed minutes when session ends */
+  onComplete?: (actualMinutes: number) => void;
 }
 
 export function SpinTimer({ durationMinutes, label, onComplete }: Props) {
@@ -18,34 +19,41 @@ export function SpinTimer({ durationMinutes, label, onComplete }: Props) {
   const [paused, setPaused] = useState(false);
   const [done, setDone] = useState(false);
   const intervalRef = useRef<number | null>(null);
+  const startedAtRef = useRef<number>(Date.now());
 
   const finish = useCallback(() => {
+    if (done) return;
     setDone(true);
     setRemaining(0);
     if (intervalRef.current) window.clearInterval(intervalRef.current);
+    const actualMin = Math.max(
+      1,
+      Math.round((Date.now() - startedAtRef.current) / 60000)
+    );
     try {
-      // Optional completion feedback
       if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-        new Notification('Timer done', { body: label });
+        new Notification('Timer done', { body: `${label} · ${actualMin} min` });
       }
-      // Beep via oscillator if available
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.frequency.value = 880;
-      gain.gain.value = 0.1;
-      osc.start();
-      setTimeout(() => {
-        osc.stop();
-        ctx.close();
-      }, 300);
+      const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (Ctx) {
+        const ctx = new Ctx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 880;
+        gain.gain.value = 0.1;
+        osc.start();
+        setTimeout(() => {
+          osc.stop();
+          void ctx.close();
+        }, 300);
+      }
     } catch {
-      /* ignore audio/notification failures */
+      /* ignore */
     }
-    onComplete?.();
-  }, [label, onComplete]);
+    onComplete?.(actualMin);
+  }, [done, label, onComplete]);
 
   useEffect(() => {
     registerForceCompleteTimer(() => finish());
@@ -73,8 +81,17 @@ export function SpinTimer({ durationMinutes, label, onComplete }: Props) {
   const pct = totalSec > 0 ? ((totalSec - remaining) / totalSec) * 100 : 100;
 
   return (
-    <div style={{ marginTop: 12, padding: 12, borderRadius: 12, background: 'var(--color-surface-2, var(--color-surface))' }}>
-      <div style={{ fontWeight: 600, marginBottom: 4 }}>{done ? '✓ Done' : '⏱ Timer'}</div>
+    <div
+      style={{
+        marginTop: 12,
+        padding: 12,
+        borderRadius: 12,
+        background: 'var(--color-surface-2, var(--color-surface))',
+      }}
+    >
+      <div style={{ fontWeight: 600, marginBottom: 4 }}>
+        {done ? '✓ Session recorded' : '⏱ Live timer'}
+      </div>
       <div style={{ fontSize: 28, fontVariantNumeric: 'tabular-nums', marginBottom: 8 }}>
         {String(mm).padStart(2, '0')}:{String(ss).padStart(2, '0')}
       </div>
@@ -102,7 +119,7 @@ export function SpinTimer({ durationMinutes, label, onComplete }: Props) {
             {paused ? 'Resume' : 'Pause'}
           </Button>
           <Button variant="ghost" onClick={finish}>
-            Finish now
+            Finish now (save real time)
           </Button>
         </div>
       )}

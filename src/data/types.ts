@@ -456,7 +456,7 @@ export interface SpinWheel extends BaseEntity {
   lastSpunAt?: string;
 }
 
-/** Optional log of spins for history (not invented). */
+/** Optional log of spins for history (not invented — real timestamps). */
 export interface SpinHistory extends BaseEntity {
   date: string; // yyyy-mm-dd
   wheelId: string;
@@ -465,7 +465,16 @@ export interface SpinHistory extends BaseEntity {
   optionLabel: string;
   /** Breadcrumb of wheel names from root to leaf. */
   path: string[];
+  /** Planned minutes at accept (may be capped by time-until-cutoff). */
   durationMinutes?: number;
+  /** Original option duration before budget cap. */
+  plannedMinutes?: number;
+  /** Wall-clock start (ISO). Set when user starts / accepts. */
+  startedAt?: string;
+  /** Wall-clock end (ISO). Set when timer finishes or user marks done. */
+  endedAt?: string;
+  /** Actual elapsed minutes (from startedAt→endedAt), not a fake receipt. */
+  actualMinutes?: number;
   completed: boolean;
 }
 

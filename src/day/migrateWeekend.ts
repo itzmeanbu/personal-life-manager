@@ -8,7 +8,7 @@ import { ensureSpinPhaseExists } from './phaseSeed';
 import { resolvePhasesForDate } from './phaseEngine';
 import { toIsoDate } from '../routine/engine';
 
-const MIGRATE_FLAG = 'weekendJourneyMigrated_v1';
+const MIGRATE_FLAG = 'weekendJourneyMigrated_v2';
 
 const DAILY_TITLES = new Set([
   'wake up',
@@ -17,6 +17,7 @@ const DAILY_TITLES = new Set([
   'hair serum',
   'breakfast',
   'sleep',
+  'guitar practice',
 ]);
 
 export async function migrateWeekendJourney(): Promise<void> {

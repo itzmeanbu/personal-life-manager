@@ -59,6 +59,7 @@ const DEFAULT_PHASES: SeedPhase[] = [
     enabled: true,
     moduleTags: ['guitar'],
     categories: ['Music'],
+    // every day — guitar especially useful Sunday night after spin
     activeDays: [],
   },
   {
