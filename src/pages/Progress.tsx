@@ -185,7 +185,9 @@ export default function Progress() {
             {contextBits.length > 0 && (
               <div className="pg-context">{contextBits.join(' · ')}</div>
             )}
-            <div className="pg-hero__eyebrow">{today.date}</div>
+            <div className="pg-hero__eyebrow">
+              {today.date.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}
+            </div>
             <div className="pg-hero__title">
               {greet}.
               <br />

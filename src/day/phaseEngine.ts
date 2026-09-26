@@ -18,11 +18,6 @@ import {
 } from '../data/repository';
 import type { Phase, DayProgress, Routine, CompletionRecord } from '../data/types';
 import { toIsoDate, isRoutineScheduledOnDate, sortRoutines } from '../routine/engine';
-import { generateId } from '../data/repository';
-
-function nowIso(): string {
-  return new Date().toISOString();
-}
 
 /** Routines that belong to a phase on a given date. */
 export function routinesForPhase(
@@ -151,10 +146,13 @@ export async function evaluateAndAdvance(date: Date): Promise<DayProgress> {
     currentId !== progress.currentPhaseId ||
     completed.length !== progress.completedPhaseIds.length
   ) {
-    return dayProgressRepo.update(progress.id, {
+    const updated = await dayProgressRepo.update(progress.id, {
       currentPhaseId: currentId,
       completedPhaseIds: completed,
     });
+    // Fall back to an in-memory merge if the row vanished between read and write
+    // (e.g. deleted concurrently) so callers always get a DayProgress back.
+    return updated ?? { ...progress, currentPhaseId: currentId, completedPhaseIds: completed };
   }
   return progress;
 }
@@ -170,10 +168,11 @@ export async function markPhaseComplete(date: Date, phaseId: string): Promise<Da
   const idx = orderedIds.indexOf(phaseId);
   const nextId = idx >= 0 && idx < orderedIds.length - 1 ? orderedIds[idx + 1] : null;
 
-  return dayProgressRepo.update(progress.id, {
+  const updated = await dayProgressRepo.update(progress.id, {
     currentPhaseId: nextId,
     completedPhaseIds: completed,
   });
+  return updated ?? { ...progress, currentPhaseId: nextId, completedPhaseIds: completed };
 }
 
 /** True when every phase for the day is done (currentPhaseId is null). */

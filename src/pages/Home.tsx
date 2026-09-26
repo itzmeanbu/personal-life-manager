@@ -11,7 +11,6 @@ import { useToday } from '../hooks/useToday';
 import { useDayProgress } from '../day/hooks';
 import { useDailyAgenda } from '../routine/hooks';
 import { deriveStatus } from '../routine/engine';
-import type { Routine } from '../data/types';
 import { AppLogo } from '../appearance/AppLogo';
 import { Link } from 'react-router-dom';
 
@@ -29,14 +28,6 @@ export default function Home() {
   } = useDayProgress(today.date);
 
   const { setStatus, clearStatus } = useDailyAgenda(today.date);
-
-  const markDone = useCallback(
-    async (routineId: string) => {
-      await setStatus(routineId, 'done');
-      await refresh();
-    },
-    [setStatus, refresh]
-  );
 
   const toggle = useCallback(
     async (routineId: string, currentlyDone: boolean) => {

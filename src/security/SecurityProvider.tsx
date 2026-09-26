@@ -14,7 +14,7 @@ interface SecurityContextValue {
   unlock: () => void;
   /** Force a re-lock (e.g. after the user disables/enables settings). */
   lockNow: () => void;
-  refreshConfig: () => Promise<void>;
+  refreshConfig: () => Promise<SecurityConfig>;
 }
 
 const SecurityContext = createContext<SecurityContextValue | null>(null);

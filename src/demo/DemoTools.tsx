@@ -29,9 +29,11 @@ export function setDemoDayOfWeek(dayIndex: number | null) {
   listeners.forEach((l) => l());
 }
 
-export function subscribeDemoDay(cb: () => void) {
+export function subscribeDemoDay(cb: () => void): () => void {
   listeners.add(cb);
-  return () => listeners.delete(cb);
+  return () => {
+    listeners.delete(cb);
+  };
 }
 
 /** Instantly complete any running timer (spin / k-drama). */
