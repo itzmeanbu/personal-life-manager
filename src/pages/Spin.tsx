@@ -46,7 +46,13 @@ export default function Spin() {
     [seeded]
   );
   const history = useLiveQuery(
-    () => spinHistoriesRepo.list().then((r) => r.sort((a, b) => (a.date < b.date ? 1 : -1))),
+    async () => {
+      const todayIso = toIsoDate(new Date());
+      const r = await spinHistoriesRepo.list();
+      return r
+        .filter((h) => !h.deleted && h.date === todayIso)
+        .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+    },
     [seeded]
   );
 
@@ -68,8 +74,14 @@ export default function Spin() {
     }
   }, [roots, currentWheelId]);
 
+  const sessionOpen = Boolean(activeHistoryId) || Boolean(timerMinutes && timerMinutes > 0);
+
   const doSpin = useCallback(async () => {
     if (!currentWheel || spinning) return;
+    // Must complete current wall session before next spin
+    if (activeHistoryId || (timerMinutes != null && timerMinutes > 0)) return;
+    // Must resolve leaf result first (no skipping)
+    if (result && !result.childWheelId) return;
     const eligible = eligibleOptions(currentWheel);
     if (eligible.length === 0) {
       setResult(null);
@@ -90,7 +102,7 @@ export default function Spin() {
         lastSpunAt: new Date().toISOString(),
       });
     }
-  }, [currentWheel, spinning]);
+  }, [currentWheel, spinning, activeHistoryId, timerMinutes, result]);
 
   const acceptResult = useCallback(async () => {
     if (!result || !currentWheel) return;
@@ -191,16 +203,21 @@ export default function Spin() {
       delete (window as unknown as { __spinWatchId?: string }).__spinWatchId;
       setActiveHistoryId(null);
       setTimerMinutes(null);
-      setBudgetNote((n) => (n ? `${n} · saved to today's history` : "Saved to today's history"));
+      setResult(null);
+      setWatchlistPickLabel(null);
+      setBudgetNote("Saved to today's history — next spin unlocked");
     },
     [activeHistoryId]
   );
 
   const spinAgain = () => {
+    // Only allowed after current session fully closed
+    if (activeHistoryId || (timerMinutes != null && timerMinutes > 0)) return;
     setResult(null);
     setTimerMinutes(null);
     setActiveHistoryId(null);
     setBudgetNote(null);
+    setWatchlistPickLabel(null);
     void doSpin();
   };
 
@@ -345,10 +362,15 @@ export default function Spin() {
             {hidden > 0 ? ` · ${hidden} hidden by time window` : ''}
           </p>
 
+          {(sessionOpen || (result && !result.childWheelId)) && (
+            <p className="sp-muted" style={{ textAlign: 'center', marginBottom: 8 }}>
+              Finish this spin at the wall (timer / DEMO log / mark finished) before the next one.
+            </p>
+          )}
           {!result && (
             <div className="sp-actions">
-              <Button variant="primary" disabled={spinning || eligible.length === 0} onClick={doSpin}>
-                {spinning ? 'Spinning…' : 'SPIN'}
+              <Button variant="primary" disabled={spinning || eligible.length === 0 || sessionOpen} onClick={doSpin}>
+                {spinning ? 'Spinning…' : sessionOpen ? 'Complete current first' : 'SPIN'}
               </Button>
               {path.length > 1 && (
                 <Button variant="ghost" onClick={goRoot}>
@@ -419,6 +441,8 @@ export default function Spin() {
                         setBudgetNote(`DEMO · logged ${hours}h to today's history (no episode +1)`);
                         setTimerMinutes(null);
                         setActiveHistoryId(null);
+                        setResult(null);
+                        setWatchlistPickLabel(null);
                       } finally {
                         setBusy(false);
                       }

@@ -14,6 +14,7 @@ import { deriveStatus, STATUS_LABELS } from '../routine/engine';
 import { markPhaseComplete, isActionPhase } from '../day/phaseEngine';
 import { forceRebuildToday } from '../day/migrateWeekend';
 import { pickEncouragement } from '../home/encourage';
+import { MealPrompt } from '../day/MealPrompt';
 import { getContinueCandidates } from '../entertainment/continue';
 import { dayAssignmentsRepo } from '../data/repository';
 import { toIsoDate } from '../routine/engine';
@@ -345,6 +346,7 @@ export default function Home() {
         <Card style={{ marginBottom: 12, borderLeft: '3px solid var(--color-accent)' }}>
           <p style={{ margin: 0, fontSize: 'var(--text-sm)' }}>{nudgeText}</p>
         </Card>
+        <MealPrompt date={today.date} />
         {continueWatch && continueWatch.length > 0 && (
           <Card style={{ marginBottom: 12 }}>
             <div style={{ fontWeight: 600, marginBottom: 6 }}>Continue watching</div>
