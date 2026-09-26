@@ -10,7 +10,7 @@ import { Button } from '../components/ui/Button';
 import { useToday } from '../hooks/useToday';
 import { useDayProgress, useAllDayProfiles } from '../day/hooks';
 import { useDailyAgenda } from '../routine/hooks';
-import { deriveStatus } from '../routine/engine';
+import { deriveStatus, STATUS_LABELS } from '../routine/engine';
 import { markPhaseComplete } from '../day/phaseEngine';
 import { isActionPhase } from '../day/phaseEngine';
 import { dayAssignmentsRepo } from '../data/repository';
@@ -322,11 +322,15 @@ export default function Home() {
                     }}
                   >
                     <span
+                      title={STATUS_LABELS[status]}
                       style={{
                         width: 26,
                         height: 26,
                         borderRadius: '50%',
-                        border: '2px solid var(--color-border)',
+                        border:
+                          status === 'missed'
+                            ? '2px solid var(--color-danger)'
+                            : '2px solid var(--color-border)',
                         display: 'inline-flex',
                         alignItems: 'center',
                         justifyContent: 'center',
