@@ -1,13 +1,5 @@
 /**
  * Day Journey phase resolution and completion logic.
- *
- * - Resolves which phases apply to a given date (based on Phase.activeDays
- *   and whether the phase has any applicable items that day).
- * - Builds / resumes DayProgress for the date.
- * - Decides when a phase is complete (every enabled routine belonging to
- *   it for that date is marked done/skipped).
- * - Advances currentPhaseId automatically; skips empty phases; ends on
- *   the last phase with "All done".
  */
 
 import {
@@ -18,6 +10,13 @@ import {
 } from '../data/repository';
 import type { Phase, DayProgress, Routine, CompletionRecord } from '../data/types';
 import { toIsoDate, isRoutineScheduledOnDate, sortRoutines } from '../routine/engine';
+
+/** True for free-time / spin style phases that don't need routine rows. */
+export function isActionPhase(phase: Phase): boolean {
+  if (phase.moduleTags?.includes('spin')) return true;
+  const n = phase.name.toLowerCase();
+  return n.includes('spin') || n.includes('free time') || n.includes('free-time');
+}
 
 /** Routines that belong to a phase on a given date. */
 export function routinesForPhase(
@@ -34,7 +33,6 @@ export function routinesForPhase(
       if (phase.categories.length > 0 && r.category) {
         if (phase.categories.includes(r.category)) return true;
       }
-      // If phase has neither tags nor categories, match nothing (shouldn't happen for defaults)
       return false;
     })
   );
@@ -47,8 +45,11 @@ export function isPhaseComplete(
   completions: CompletionRecord[],
   isoDate: string
 ): boolean {
+  // Action phases (Spin) are never auto-complete from routines — user taps Done
+  if (isActionPhase(phase)) return false;
+
   const items = routinesForPhase(phase, routines, new Date(isoDate + 'T12:00:00'));
-  if (items.length === 0) return true; // empty => treat as complete so we skip
+  if (items.length === 0) return true;
   return items.every((r) => {
     const rec = completions.find(
       (c) => c.refType === 'routine' && c.refId === r.id && c.date === isoDate && !c.deleted
@@ -57,7 +58,7 @@ export function isPhaseComplete(
   });
 }
 
-/** Ordered list of phases that apply on this date (enabled + activeDays match + has items or is last). */
+/** Ordered list of phases that apply on this date. */
 export async function resolvePhasesForDate(date: Date): Promise<Phase[]> {
   const all = (await phasesRepo.list()).filter((p) => p.enabled && !p.deleted);
   const dayIndex = date.getDay();
@@ -70,24 +71,21 @@ export async function resolvePhasesForDate(date: Date): Promise<Phase[]> {
       continue;
     }
     const items = routinesForPhase(phase, routines, date);
-    // Keep phases that have items; also keep the final "Sleep" style phase even if empty
-    // so the day can still end cleanly. For empty intermediate phases we skip them.
     if (items.length > 0) {
       applicable.push(phase);
-    } else if (phase === sorted[sorted.length - 1] || phase.name.toLowerCase().includes('sleep')) {
-      // Keep terminal phase even if empty so "All done" can still be reached.
+    } else if (isActionPhase(phase)) {
+      // Spin / free-time always shows on its active days even with no routines
+      applicable.push(phase);
+    } else if (
+      phase === sorted[sorted.length - 1] ||
+      phase.name.toLowerCase().includes('sleep')
+    ) {
       applicable.push(phase);
     }
   }
   return applicable;
 }
 
-/**
- * Get or create DayProgress for the given date.
- * On first access for a date: resolves phaseIdsToday, sets current to first.
- * On later access same day: returns existing (resume).
- * Different date: new row.
- */
 export async function getOrCreateDayProgress(date: Date): Promise<DayProgress> {
   const iso = toIsoDate(date);
   const existing = (await dayProgressRepo.list()).find(
@@ -108,11 +106,6 @@ export async function getOrCreateDayProgress(date: Date): Promise<DayProgress> {
   return dayProgressRepo.create(row);
 }
 
-/**
- * Re-evaluate completion of the current phase and advance if needed.
- * Call after any routine completion change for the date.
- * Returns the (possibly updated) DayProgress.
- */
 export async function evaluateAndAdvance(date: Date): Promise<DayProgress> {
   const progress = await getOrCreateDayProgress(date);
   const iso = progress.date;
@@ -127,7 +120,6 @@ export async function evaluateAndAdvance(date: Date): Promise<DayProgress> {
   let completed = [...progress.completedPhaseIds];
   const orderedIds = progress.phaseIdsToday;
 
-  // Advance through any already-complete phases
   while (currentId) {
     const phase = phaseMap.get(currentId);
     if (!phase) break;
@@ -141,7 +133,6 @@ export async function evaluateAndAdvance(date: Date): Promise<DayProgress> {
     currentId = nextId;
   }
 
-  // If we moved, persist
   if (
     currentId !== progress.currentPhaseId ||
     completed.length !== progress.completedPhaseIds.length
@@ -150,14 +141,11 @@ export async function evaluateAndAdvance(date: Date): Promise<DayProgress> {
       currentPhaseId: currentId,
       completedPhaseIds: completed,
     });
-    // Fall back to an in-memory merge if the row vanished between read and write
-    // (e.g. deleted concurrently) so callers always get a DayProgress back.
     return updated ?? { ...progress, currentPhaseId: currentId, completedPhaseIds: completed };
   }
   return progress;
 }
 
-/** Mark a specific phase complete (used when user finishes last item). */
 export async function markPhaseComplete(date: Date, phaseId: string): Promise<DayProgress> {
   const progress = await getOrCreateDayProgress(date);
   const completed = progress.completedPhaseIds.includes(phaseId)
@@ -175,12 +163,10 @@ export async function markPhaseComplete(date: Date, phaseId: string): Promise<Da
   return updated ?? { ...progress, currentPhaseId: nextId, completedPhaseIds: completed };
 }
 
-/** True when every phase for the day is done (currentPhaseId is null). */
 export function isDayComplete(progress: DayProgress): boolean {
   return progress.currentPhaseId === null && progress.phaseIdsToday.length > 0;
 }
 
-/** Human index for UI: "Phase 2 of 5". 1-based among phaseIdsToday. */
 export function phasePosition(
   progress: DayProgress,
   phaseId: string | null

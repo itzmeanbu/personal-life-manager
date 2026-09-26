@@ -1,18 +1,22 @@
 /**
- * Day Journey screen — replaces the old module-grid Home.
- * Shows only the current active phase full-screen. When the phase is
- * completed it vanishes and the next phase appears automatically.
+ * Day Journey — current phase only. Completed checklist items vanish.
+ * Spin phase gets a big CTA. End-of-day asks what tomorrow looks like.
  */
-import { useCallback } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { StatusBadge } from '../components/routine/StatusBadge';
 import { useToday } from '../hooks/useToday';
-import { useDayProgress } from '../day/hooks';
+import { useDayProgress, useAllDayProfiles } from '../day/hooks';
 import { useDailyAgenda } from '../routine/hooks';
 import { deriveStatus } from '../routine/engine';
+import { markPhaseComplete } from '../day/phaseEngine';
+import { isActionPhase } from '../day/phaseEngine';
+import { dayAssignmentsRepo } from '../data/repository';
+import { toIsoDate } from '../routine/engine';
 import { AppLogo } from '../appearance/AppLogo';
-import { Link } from 'react-router-dom';
+import '../day/day.css';
 
 export default function Home() {
   const today = useToday();
@@ -28,6 +32,42 @@ export default function Home() {
   } = useDayProgress(today.date);
 
   const { setStatus, clearStatus } = useDailyAgenda(today.date);
+  const profiles = useAllDayProfiles();
+  const [savingTomorrow, setSavingTomorrow] = useState(false);
+  const [tomorrowSaved, setTomorrowSaved] = useState<string | null>(null);
+
+  const tomorrowIso = useMemo(() => {
+    const d = new Date(today.date);
+    d.setDate(d.getDate() + 1);
+    return toIsoDate(d);
+  }, [today.date]);
+
+  const existingTomorrow = useLiveQuery(
+    async () => {
+      const rows = await dayAssignmentsRepo.list();
+      return rows.find((a) => a.date === tomorrowIso && !a.deleted) ?? null;
+    },
+    [tomorrowIso],
+    null
+  );
+
+  // Only show incomplete items — done ones vanish
+  const visibleRoutines = useMemo(() => {
+    return phaseRoutines.filter((r) => {
+      const status = deriveStatus(
+        r,
+        progress?.date ?? '',
+        completions.find((c) => c.refType === 'routine' && c.refId === r.id),
+        new Date()
+      );
+      return status !== 'done' && status !== 'skipped';
+    });
+  }, [phaseRoutines, completions, progress]);
+
+  const doneCount = phaseRoutines.length - visibleRoutines.length;
+  const totalCount = phaseRoutines.length;
+  const pct =
+    totalCount === 0 ? 0 : Math.round((doneCount / totalCount) * 100);
 
   const toggle = useCallback(
     async (routineId: string, currentlyDone: boolean) => {
@@ -41,6 +81,34 @@ export default function Home() {
     [setStatus, clearStatus, refresh]
   );
 
+  const finishSpinPhase = useCallback(async () => {
+    if (!currentPhase || !progress) return;
+    await markPhaseComplete(today.date, currentPhase.id);
+    await refresh();
+  }, [currentPhase, progress, today.date, refresh]);
+
+  const pickTomorrow = useCallback(
+    async (profileId: string, name: string) => {
+      setSavingTomorrow(true);
+      try {
+        if (existingTomorrow) {
+          await dayAssignmentsRepo.update(existingTomorrow.id, { profileId });
+        } else {
+          await dayAssignmentsRepo.create({
+            date: tomorrowIso,
+            profileId,
+            checklistDone: [],
+            notes: '',
+          });
+        }
+        setTomorrowSaved(name);
+      } finally {
+        setSavingTomorrow(false);
+      }
+    },
+    [existingTomorrow, tomorrowIso]
+  );
+
   if (loading && !progress) {
     return (
       <div className="page-shell">
@@ -51,7 +119,9 @@ export default function Home() {
     );
   }
 
+  /* -------------------- ALL DONE -------------------- */
   if (isComplete || !currentPhase) {
+    const quickProfiles = profiles.filter((p) => p.enabled).slice(0, 6);
     return (
       <div className="page-shell day-journey">
         <header className="page-shell__header" style={{ flexDirection: 'column', gap: 4 }}>
@@ -64,22 +134,66 @@ export default function Home() {
           </h1>
         </header>
         <div className="page-shell__content">
-          <Card>
+          <Card style={{ marginBottom: 16 }}>
             <p style={{ fontSize: 'var(--text-lg)', margin: 0 }}>
-              🎉 You’ve completed every phase for {today.dayName}.
+              🎉 You’ve finished every phase for {today.dayName}.
             </p>
-            <p style={{ color: 'var(--color-text-secondary)', marginTop: 8 }}>
-              Rest well. Tomorrow’s journey starts fresh at midnight.
+            <p style={{ color: 'var(--color-text-secondary)', marginTop: 8, marginBottom: 0 }}>
+              Rest well. A new journey starts at midnight.
             </p>
-            <Link to="/settings" style={{ marginTop: 16, display: 'inline-block' }}>
-              <Button variant="secondary">Settings</Button>
-            </Link>
           </Card>
+
+          <h2 style={{ fontSize: 'var(--text-base)', margin: '0 0 8px' }}>
+            What’s tomorrow?
+          </h2>
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', marginTop: 0 }}>
+            One tap — no menus. Change anytime in Special Days.
+          </p>
+
+          <div className="day-profile-grid">
+            {quickProfiles.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                className={`day-profile-tile${
+                  existingTomorrow?.profileId === p.id || tomorrowSaved === p.name
+                    ? ' day-profile-tile--active'
+                    : ''
+                }`}
+                disabled={savingTomorrow}
+                onClick={() => pickTomorrow(p.id, p.name)}
+              >
+                <span className="day-profile-tile__icon">{p.icon ?? '📅'}</span>
+                <span className="day-profile-tile__name">{p.name}</span>
+              </button>
+            ))}
+          </div>
+
+          {tomorrowSaved && (
+            <p style={{ color: 'var(--color-accent)', fontSize: 'var(--text-sm)', marginTop: 8 }}>
+              ✓ Tomorrow set to “{tomorrowSaved}”
+            </p>
+          )}
+
+          <div style={{ marginTop: 20, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Link to="/special-days">
+              <Button variant="secondary">Edit day types</Button>
+            </Link>
+            <Link to="/weekly-schedule">
+              <Button variant="ghost">Weekly schedule</Button>
+            </Link>
+            <Link to="/settings">
+              <Button variant="ghost">Settings</Button>
+            </Link>
+          </div>
         </div>
       </div>
     );
   }
 
+  const action = isActionPhase(currentPhase);
+
+  /* -------------------- ACTIVE PHASE -------------------- */
   return (
     <div className="page-shell day-journey">
       <header
@@ -95,11 +209,12 @@ export default function Home() {
             <div
               style={{
                 fontSize: 'var(--text-xs)',
-                color: 'var(--color-text-tertiary, var(--color-text-secondary))',
+                color: 'var(--color-text-secondary)',
                 marginTop: 2,
               }}
             >
               Phase {position.current} of {position.total}
+              {totalCount > 0 ? ` · ${doneCount}/${totalCount}` : ''}
             </div>
           </div>
         </div>
@@ -107,16 +222,76 @@ export default function Home() {
           {currentPhase.icon ? `${currentPhase.icon} ` : ''}
           {currentPhase.name}
         </h1>
+
+        {/* Progress bar */}
+        {totalCount > 0 && (
+          <div
+            style={{
+              width: '100%',
+              height: 6,
+              borderRadius: 3,
+              background: 'var(--color-border)',
+              marginTop: 8,
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              style={{
+                height: '100%',
+                width: `${pct}%`,
+                background: 'var(--color-accent)',
+                transition: 'width 0.25s ease',
+              }}
+            />
+          </div>
+        )}
       </header>
 
       <div className="page-shell__content">
-        {phaseRoutines.length === 0 ? (
+        {/* SPIN / FREE TIME phase */}
+        {action && (
+          <Card style={{ marginBottom: 16, textAlign: 'center', padding: '24px 16px' }}>
+            <div style={{ fontSize: 48, marginBottom: 8 }}>🎡</div>
+            <p style={{ fontSize: 'var(--text-lg)', fontWeight: 600, margin: '0 0 8px' }}>
+              Free time — spin the wheel
+            </p>
+            <p style={{ color: 'var(--color-text-secondary)', margin: '0 0 16px', fontSize: 'var(--text-sm)' }}>
+              Sat / Sun (or whenever you scheduled this phase). Spin for K-drama, games, coding, or rest.
+            </p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <Link to="/spin">
+                <Button variant="primary">Open Spin Wheel</Button>
+              </Link>
+              <Button variant="secondary" onClick={finishSpinPhase}>
+                Done with free time →
+              </Button>
+            </div>
+          </Card>
+        )}
+
+        {/* Checklist — incomplete only */}
+        {!action && visibleRoutines.length === 0 && totalCount === 0 && (
           <Card>
-            <p style={{ color: 'var(--color-text-secondary)' }}>
-              Nothing scheduled for this phase today. Advancing…
+            <p style={{ color: 'var(--color-text-secondary)', margin: 0 }}>
+              Nothing scheduled for this phase today. It will skip automatically when you refresh,
+              or mark it done below.
+            </p>
+            <Button variant="secondary" style={{ marginTop: 12 }} onClick={finishSpinPhase}>
+              Skip this phase
+            </Button>
+          </Card>
+        )}
+
+        {!action && visibleRoutines.length === 0 && totalCount > 0 && (
+          <Card style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: 'var(--text-lg)', margin: 0 }}>✓ Phase complete</p>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)' }}>
+              Advancing to the next phase…
             </p>
           </Card>
-        ) : (
+        )}
+
+        {visibleRoutines.length > 0 && (
           <ul
             style={{
               listStyle: 'none',
@@ -127,46 +302,37 @@ export default function Home() {
               gap: 8,
             }}
           >
-            {phaseRoutines.map((routine) => {
+            {visibleRoutines.map((routine) => {
               const status = deriveStatus(
                 routine,
                 progress!.date,
                 completions.find((c) => c.refType === 'routine' && c.refId === routine.id),
                 new Date()
               );
-              const done = status === 'done' || status === 'skipped';
               return (
                 <li key={routine.id}>
                   <Card
                     interactive
-                    onClick={() => toggle(routine.id, done)}
+                    onClick={() => toggle(routine.id, false)}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
                       gap: 12,
-                      opacity: done ? 0.55 : 1,
                       cursor: 'pointer',
                     }}
                   >
                     <span
                       style={{
-                        width: 24,
-                        height: 24,
+                        width: 26,
+                        height: 26,
                         borderRadius: '50%',
-                        border: done
-                          ? '2px solid var(--color-accent)'
-                          : '2px solid var(--color-border)',
-                        background: done ? 'var(--color-accent)' : 'transparent',
+                        border: '2px solid var(--color-border)',
                         display: 'inline-flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: done ? '#fff' : 'transparent',
-                        fontSize: 14,
                         flexShrink: 0,
                       }}
-                    >
-                      {done ? '✓' : ''}
-                    </span>
+                    />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 500 }}>{routine.title}</div>
                       {routine.time && (
@@ -181,12 +347,24 @@ export default function Home() {
                         </div>
                       )}
                     </div>
-                    <StatusBadge status={status} />
                   </Card>
                 </li>
               );
             })}
           </ul>
+        )}
+
+        {doneCount > 0 && (
+          <p
+            style={{
+              textAlign: 'center',
+              color: 'var(--color-text-secondary)',
+              fontSize: 'var(--text-sm)',
+              marginTop: 12,
+            }}
+          >
+            {doneCount} done — vanished from list
+          </p>
         )}
 
         <div style={{ marginTop: 24, textAlign: 'center' }}>
