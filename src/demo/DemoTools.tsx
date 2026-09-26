@@ -8,12 +8,25 @@ import { Button } from '../components/ui/Button';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+const TIME_PRESETS: { label: string; hour: number; minute: number }[] = [
+  { label: '7:00 AM', hour: 7, minute: 0 },
+  { label: '12:00 PM', hour: 12, minute: 0 },
+  { label: '6:00 PM', hour: 18, minute: 0 },
+  { label: '10:00 PM', hour: 22, minute: 0 },
+];
+
 /** Override the "today" date for Day Journey preview. null = real today. */
 let demoDayOverride: Date | null = null;
+/** Override the "current time" for Day Journey preview. null = real time. */
+let demoTimeOverride: { hour: number; minute: number } | null = null;
 const listeners = new Set<() => void>();
 
 export function getDemoDate(): Date {
-  return demoDayOverride ?? new Date();
+  const base = demoDayOverride ? new Date(demoDayOverride) : new Date();
+  if (demoTimeOverride) {
+    base.setHours(demoTimeOverride.hour, demoTimeOverride.minute, 0, 0);
+  }
+  return base;
 }
 
 export function setDemoDayOfWeek(dayIndex: number | null) {
@@ -26,6 +39,11 @@ export function setDemoDayOfWeek(dayIndex: number | null) {
     d.setDate(d.getDate() + diff);
     demoDayOverride = d;
   }
+  listeners.forEach((l) => l());
+}
+
+export function setDemoTimeOfDay(hour: number | null, minute = 0) {
+  demoTimeOverride = hour === null ? null : { hour, minute };
   listeners.forEach((l) => l());
 }
 
@@ -50,6 +68,7 @@ export function requestForceCompleteTimer() {
 export function DemoToolsPanel() {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
+  const [selectedTime, setSelectedTime] = useState<number | null>(null);
 
   if (!open) {
     return (
@@ -117,6 +136,32 @@ export function DemoToolsPanel() {
               }}
             >
               Real today
+            </Button>
+          </div>
+        </div>
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ fontSize: 12, marginBottom: 4 }}>Preview time of day:</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            {TIME_PRESETS.map((preset, idx) => (
+              <Button
+                key={idx}
+                variant={selectedTime === idx ? 'primary' : 'secondary'}
+                onClick={() => {
+                  setSelectedTime(idx);
+                  setDemoTimeOfDay(preset.hour, preset.minute);
+                }}
+              >
+                {preset.label}
+              </Button>
+            ))}
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setSelectedTime(null);
+                setDemoTimeOfDay(null);
+              }}
+            >
+              Real time
             </Button>
           </div>
         </div>
