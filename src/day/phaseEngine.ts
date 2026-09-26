@@ -94,6 +94,8 @@ export async function resolvePhasesForDate(date: Date): Promise<Phase[]> {
   const profile = await resolveProfileForDate(date);
   const effects = profile?.effects;
   const isBunk = profile?.systemKey === 'bunk';
+  const isRest = profile?.systemKey === 'rest' || profile?.systemKey === 'holiday';
+  const forceSpinDay = isBunk || isRest;
 
   const routines = await routinesRepo.list();
   const applicable: Phase[] = [];
@@ -105,14 +107,14 @@ export async function resolvePhasesForDate(date: Date): Promise<Phase[]> {
       }
     }
     // Bunk day: never show College phase
-    if (isBunk && phase.moduleTags?.includes('college')) {
+    if ((isBunk || isRest) && phase.moduleTags?.includes('college')) {
       continue;
     }
 
     const onActiveDay =
       phase.activeDays.length === 0 || phase.activeDays.includes(dayIndex);
     // Bunk day forces Spin phase even on weekdays
-    const forceSpin = isBunk && isActionPhase(phase);
+    const forceSpin = forceSpinDay && isActionPhase(phase);
 
     if (!onActiveDay && !forceSpin) {
       continue;

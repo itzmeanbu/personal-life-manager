@@ -191,7 +191,19 @@ export default function Home() {
 
   /* -------------------- ALL DONE -------------------- */
   if (isComplete || !currentPhase) {
-    const quickProfiles = profiles.filter((p) => p.enabled).slice(0, 6);
+    const quickProfiles = profiles.filter((p) => p.enabled).slice(0, 8);
+    const tileHint = (key?: string | null) => {
+      switch (key) {
+        case 'bunk': return 'Home early · spin after you arrive';
+        case 'rest': return 'Spin wheel day · no college';
+        case 'holiday': return 'Off day · free time';
+        case 'hackathon': return 'Build mode · sleep optional';
+        case 'exam': return 'Focus · light day';
+        case 'normal': return 'College day';
+        case 'sunday': return 'Reset & plan';
+        default: return '';
+      }
+    };
     return (
       <div className="page-shell day-journey">
         <header className="page-shell__header" style={{ flexDirection: 'column', gap: 4 }}>

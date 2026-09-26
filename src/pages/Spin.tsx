@@ -51,7 +51,8 @@ export default function Spin() {
       const r = await spinHistoriesRepo.list();
       return r
         .filter((h) => !h.deleted && h.date === todayIso)
-        .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+        .filter((h) => (h.actualMinutes ?? h.durationMinutes ?? 0) <= 12 * 60)
+        .sort((a, b) => ((a.startedAt ?? a.createdAt) < (b.startedAt ?? b.createdAt) ? 1 : -1));
     },
     [seeded]
   );
@@ -770,17 +771,31 @@ export default function Spin() {
 
   function renderHistory() {
     const todayIso = toIsoDate(new Date());
-    const list = (history ?? []).filter((h) => !h.deleted && h.date === todayIso);
+    const list = (history ?? []).filter((h) => !h.deleted && h.date === todayIso).filter((h) => (h.actualMinutes ?? h.durationMinutes ?? 0) <= 12 * 60);
     if (list.length === 0) {
       return (
         <EmptyState
           icon="📜"
-          title="No spins logged"
-          description="Today only — spin and finish a session to log it here."
+          title="No spins logged today"
+          description="Finish a spin session — it shows here and on the Today tab."
         />
       );
     }
     return (
+      <>
+      <div style={{ marginBottom: 8 }}>
+        <Button
+          variant="ghost"
+          onClick={async () => {
+            const rows = await spinHistoriesRepo.list();
+            for (const h of rows) {
+              if (!h.deleted && h.date === todayIso) await spinHistoriesRepo.remove(h.id);
+            }
+          }}
+        >
+          Clear today&apos;s history
+        </Button>
+      </div>
       <Card style={{ padding: 0 }}>
         {list.map((h, i) => (
           <div
@@ -802,6 +817,7 @@ export default function Spin() {
           </div>
         ))}
       </Card>
+      </>
     );
   }
 

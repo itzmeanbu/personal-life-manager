@@ -101,7 +101,7 @@ const DEFAULTS: SeedProfile[] = [
     systemKey: 'hackathon',
     effects: fx({
       replaceBaseRoutines: true,
-      bannerMessage: 'Hackathon day — build mode',
+      bannerMessage: 'Hackathon day — build mode (sleep optional overnight)',
       disableModuleTags: ['workout'],
       hideModules: ['workout', 'guitar', 'bike'],
       focusModules: ['today', 'development', 'learning', 'college', 'money'],
@@ -150,6 +150,27 @@ const DEFAULTS: SeedProfile[] = [
     }),
   },
   {
+
+  {
+    name: 'Rest Day',
+    icon: '🛋️',
+    description: 'Spin wheel day — free time, no college pressure.',
+    enabled: true,
+    systemKey: 'rest',
+    effects: fx({
+      bannerMessage: 'Rest day — spin & free time',
+      disableModuleTags: ['college', 'workout'],
+      hideModules: [],
+      focusModules: ['today', 'spin', 'entertainment', 'social', 'guitar', 'sleep'],
+      foodPlan: 'Flexible — eat when ready.',
+      travelPlan: 'Stay home or light outing.',
+      checklist: [
+        { id: cid(), title: 'Morning wash / bath' },
+        { id: cid(), title: 'Eat' },
+        { id: cid(), title: 'Free time (spin)' },
+      ],
+    }),
+  },
     name: 'Holiday',
     icon: '🌴',
     description: 'No college. Rest, hobbies, optional light plans.',

@@ -746,6 +746,7 @@ export interface DayProfile extends BaseEntity {
     | 'hackathon'
     | 'event'
     | 'holiday'
+    | 'rest'
     | 'stay_out'
     | 'sunday'
     | null;

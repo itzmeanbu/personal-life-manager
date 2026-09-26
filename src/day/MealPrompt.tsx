@@ -148,7 +148,7 @@ export function MealPrompt({ date = new Date() }: { date?: Date }) {
     <Card style={{ marginBottom: 12 }}>
       <strong>Did you eat?</strong>
       <p style={{ margin: '6px 0 12px', fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
-        After morning stuff (~7:30+). Honest answer — no judgment.
+        Sunday asks from 7:30; other days from 8:00 (after wash). Change time if you need.
       </p>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
         <Button variant="primary" onClick={markAte}>

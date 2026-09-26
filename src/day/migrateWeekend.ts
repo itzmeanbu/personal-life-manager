@@ -5,10 +5,11 @@
 import { routinesRepo, dayProgressRepo, dayProfilesRepo } from '../data/repository';
 import { isFeatureEnabled, setFeatureEnabled } from '../data/settings';
 import { ensureSpinPhaseExists } from './phaseSeed';
+import { emptyEffects } from './effects';
 import { resolvePhasesForDate } from './phaseEngine';
 import { toIsoDate } from '../routine/engine';
 
-const MIGRATE_FLAG = 'weekendJourneyMigrated_v3';
+const MIGRATE_FLAG = 'weekendJourneyMigrated_v4';
 
 const DAILY_TITLES = new Set([
   'wake up',
@@ -53,6 +54,30 @@ export async function migrateWeekendJourney(): Promise<void> {
       });
     }
     await setFeatureEnabled(MIGRATE_FLAG, true);
+  }
+
+
+  // Ensure Rest Day profile exists (spin wheel day)
+  {
+    const profiles = await dayProfilesRepo.list();
+    const hasRest = profiles.some((p) => !p.deleted && p.systemKey === 'rest');
+    if (!hasRest) {
+      await dayProfilesRepo.create({
+        name: 'Rest Day',
+        icon: '🛋️',
+        description: 'Spin wheel day — free time, no college.',
+        enabled: true,
+        systemKey: 'rest',
+        effects: {
+          ...emptyEffects(),
+          bannerMessage: 'Rest day — spin & free time',
+          disableModuleTags: ['college', 'workout'],
+          focusModules: ['today', 'spin', 'entertainment', 'social', 'guitar', 'sleep'],
+          checklist: [],
+        },
+        order: 50,
+      });
+    }
   }
 
   await rebuildTodayIfEmpty();

@@ -1,18 +1,15 @@
 /**
- * Simple "did you eat?" gate around late morning / post-activity.
- * Stores answers in app settings — real, per local date.
+ * Meal gate — Sunday ~07:30 (or chosen time); other days after morning block.
+ * Stores answers per local date.
  */
 import { getSetting, setSetting } from '../data/settings';
 
 const KEY = 'day.mealGate';
 
 export interface MealGateState {
-  date: string; // yyyy-mm-dd
-  /** null = not asked yet */
+  date: string;
   ate: boolean | null;
-  /** When they said they'll eat, "HH:mm" */
   eatAtHm?: string;
-  /** ISO when 30-min post-meal break ends → night free time */
   freeTimeAfterIso?: string;
   remindedAt?: string;
 }
@@ -27,25 +24,28 @@ export async function getMealGate(dateIso: string): Promise<MealGateState> {
   return s;
 }
 
-export async function setMealGate(patch: Partial<MealGateState> & { date: string }): Promise<MealGateState> {
+export async function setMealGate(
+  patch: Partial<MealGateState> & { date: string }
+): Promise<MealGateState> {
   const cur = await getMealGate(patch.date);
   const next = { ...cur, ...patch, date: patch.date };
   await setSetting(KEY, next);
   return next;
 }
 
-/** True when local time is at/after 07:30 and meal not confirmed. */
-export function shouldAskMeal(now: Date, state: MealGateState): boolean {
-  if (state.ate === true) return false;
-  if (state.ate === false && state.eatAtHm) {
-    // already said no and picked a time — don't re-ask the first question
-    return false;
-  }
-  const mins = now.getHours() * 60 + now.getMinutes();
-  return mins >= 7 * 60 + 30; // 07:30
+/** Minutes past midnight when we first ask about food. */
+export function mealAskAfterMinutes(date: Date): number {
+  // Sunday → 07:30; other days → 08:00 (after typical wash/bath block)
+  return date.getDay() === 0 ? 7 * 60 + 30 : 8 * 60;
 }
 
-/** True when it's time to alert "eat now". */
+export function shouldAskMeal(now: Date, state: MealGateState): boolean {
+  if (state.ate === true) return false;
+  if (state.ate === false && state.eatAtHm) return false;
+  const mins = now.getHours() * 60 + now.getMinutes();
+  return mins >= mealAskAfterMinutes(now);
+}
+
 export function shouldAlertEat(now: Date, state: MealGateState): boolean {
   if (state.ate === true || !state.eatAtHm) return false;
   const [h, m] = state.eatAtHm.split(':').map(Number);
@@ -55,12 +55,10 @@ export function shouldAlertEat(now: Date, state: MealGateState): boolean {
   return cur >= target && !state.remindedAt;
 }
 
-/** True when post-meal 30min break is over → night / free-time mode. */
 export function isFreeTimeUnlocked(now: Date, state: MealGateState): boolean {
   if (state.ate === true && state.freeTimeAfterIso) {
     return now.getTime() >= new Date(state.freeTimeAfterIso).getTime();
   }
-  // If they ate immediately, unlock after 30 min from answer
   if (state.ate === true && !state.freeTimeAfterIso) return true;
   return false;
 }

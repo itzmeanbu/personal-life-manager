@@ -7,7 +7,7 @@ import { Button } from '../components/ui/Button';
 import { StatusBadge } from '../components/routine/StatusBadge';
 import { useToday } from '../hooks/useToday';
 import { useDailyAgenda } from '../routine/hooks';
-import { collegeDayStatusesRepo } from '../data/repository';
+import { collegeDayStatusesRepo, spinHistoriesRepo } from '../data/repository';
 import { toIsoDate } from '../routine/engine';
 import { formatArrivalTime } from '../college/stats';
 
@@ -20,6 +20,14 @@ export default function Today() {
     const rows = await collegeDayStatusesRepo.list();
     return rows.find((d) => d.date === todayIso && !d.deleted && d.status === 'bunked');
   }, [todayIso]);
+
+  const todaySpins = useLiveQuery(async () => {
+    const rows = await spinHistoriesRepo.list();
+    return rows
+      .filter((h) => !h.deleted && h.date === todayIso && h.completed)
+      .filter((h) => (h.actualMinutes ?? h.durationMinutes ?? 0) <= 12 * 60) // hide nonsense 1190m demos
+      .sort((a, b) => (a.startedAt ?? a.createdAt) < (b.startedAt ?? b.createdAt) ? 1 : -1);
+  }, [todayIso], []);
 
   return (
     <PageShell
@@ -87,6 +95,27 @@ export default function Today() {
         </Card>
       )}
 
+
+      {todaySpins && todaySpins.length > 0 && (
+        <Card style={{ marginBottom: 12 }}>
+          <strong>🎡 Today&apos;s spins</strong>
+          <ul style={{ margin: '8px 0 0', paddingLeft: 18 }}>
+            {todaySpins.map((h) => (
+              <li key={h.id} style={{ marginBottom: 6, fontSize: 'var(--text-sm)' }}>
+                <span style={{ fontWeight: 600 }}>{h.optionLabel}</span>
+                {' · '}
+                {h.actualMinutes ?? h.durationMinutes ?? '?'}m
+                {h.startedAt
+                  ? ` · ${new Date(h.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                  : ''}
+              </li>
+            ))}
+          </ul>
+          <Link to="/spin" style={{ marginTop: 8, display: 'inline-block' }}>
+            <Button variant="ghost">Open Spin</Button>
+          </Link>
+        </Card>
+      )}
       {reminders.length > 0 && (
         <div className="reminder-banner">
           🔔 {reminders.length === 1
