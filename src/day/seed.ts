@@ -150,8 +150,6 @@ const DEFAULTS: SeedProfile[] = [
     }),
   },
   {
-
-  {
     name: 'Rest Day',
     icon: '🛋️',
     description: 'Spin wheel day — free time, no college pressure.',
@@ -171,6 +169,7 @@ const DEFAULTS: SeedProfile[] = [
       ],
     }),
   },
+  {
     name: 'Holiday',
     icon: '🌴',
     description: 'No college. Rest, hobbies, optional light plans.',
