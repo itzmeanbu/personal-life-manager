@@ -34,6 +34,7 @@ const Development = lazy(() => import('../pages/Development'));
 const BucketList = lazy(() => import('../pages/BucketList'));
 const Settings = lazy(() => import('../pages/Settings'));
 const WeeklySchedule = lazy(() => import('../pages/settings/WeeklySchedule'));
+const QuickDay = lazy(() => import('../pages/settings/QuickDay'));
 const Appearance = lazy(() => import('../pages/Appearance'));
 const HomeAutomation = lazy(() => import('../pages/HomeAutomation'));
 const SpecialDays = lazy(() => import('../pages/SpecialDays'));
@@ -65,6 +66,7 @@ export const MODULES: ModuleDef[] = [
   { id: 'home-arrival', label: 'Home arrival', path: '/home-arrival', emoji: '📍', monogram: 'HA', colorVar: '--mod-home', Component: HomeAutomation },
   { id: 'appearance', label: 'Appearance', path: '/appearance', emoji: '🎨', monogram: 'AP', colorVar: '--mod-settings', Component: Appearance },
   { id: 'weekly-schedule', label: 'Weekly Schedule', path: '/weekly-schedule', emoji: '📅', monogram: 'WS', colorVar: '--mod-settings', Component: WeeklySchedule },
+  { id: 'quick-day', label: 'Quick day setup', path: '/quick-day', emoji: '⏰', monogram: 'QD', colorVar: '--mod-settings', Component: QuickDay },
   { id: 'settings', label: 'Settings', path: '/settings', emoji: '⚙️', monogram: '⚙', colorVar: '--mod-settings', Component: Settings },
 ];
 

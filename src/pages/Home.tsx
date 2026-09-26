@@ -18,6 +18,8 @@ import { getContinueCandidates } from '../entertainment/continue';
 import { dayAssignmentsRepo } from '../data/repository';
 import { toIsoDate } from '../routine/engine';
 import { AppLogo } from '../appearance/AppLogo';
+import { useHomeArrival } from '../home/HomeArrivalProvider';
+import { useActiveDayProfile } from '../day/hooks';
 import '../day/day.css';
 
 export default function Home() {
@@ -35,6 +37,8 @@ export default function Home() {
 
   const { setStatus, clearStatus } = useDailyAgenda(today.date);
   const profiles = useAllDayProfiles();
+  const { profile } = useActiveDayProfile(today.date);
+  const homeArrival = useHomeArrival();
   const nudgeText = useMemo(() => pickEncouragement(today.isWeekend ? 'weekend' : 'general'), [today.isWeekend]);
   const continueWatch = useLiveQuery(() => getContinueCandidates(2), [], []);
   const [savingTomorrow, setSavingTomorrow] = useState(false);
@@ -103,6 +107,17 @@ export default function Home() {
             profileId,
             checklistDone: [],
             notes: '',
+          });
+        }
+        // Clear any pre-built progress for tomorrow so phases rebuild under new profile
+        const { dayProgressRepo } = await import('../data/repository');
+        const rows = await dayProgressRepo.list();
+        const tp = rows.find((d) => d.date === tomorrowIso && !d.deleted);
+        if (tp) {
+          await dayProgressRepo.update(tp.id, {
+            phaseIdsToday: [],
+            currentPhaseId: null,
+            completedPhaseIds: [],
           });
         }
         setTomorrowSaved(name);
@@ -241,7 +256,8 @@ export default function Home() {
 
           {tomorrowSaved && (
             <p style={{ color: 'var(--color-accent)', fontSize: 'var(--text-sm)', marginTop: 8 }}>
-              ✓ Tomorrow set to “{tomorrowSaved}”
+              ✓ Tomorrow is “{tomorrowSaved}” — phases will follow that plan (e.g. bunk = no college,
+              spin after you get home).
             </p>
           )}
 
@@ -260,6 +276,14 @@ export default function Home() {
       </div>
     );
   }
+
+
+  const isBunk = profile?.systemKey === 'bunk';
+  const homeReady =
+    !isBunk ||
+    homeArrival.insideHome === true ||
+    (homeArrival.lastEvent?.kind === 'enter_home' &&
+      homeArrival.lastEvent.at.slice(0, 10) === (progress?.date ?? ''));
 
   const action = isActionPhase(currentPhase);
 
@@ -335,14 +359,35 @@ export default function Home() {
           </Card>
         )}
         {/* SPIN / FREE TIME phase */}
-        {action && (
+        {action && !homeReady && (
+          <Card style={{ marginBottom: 16, textAlign: 'center', padding: '24px 16px' }}>
+            <div style={{ fontSize: 48, marginBottom: 8 }}>🚪</div>
+            <p style={{ fontSize: 'var(--text-lg)', fontWeight: 600, margin: '0 0 8px' }}>
+              Out of the house
+            </p>
+            <p style={{ color: 'var(--color-text-secondary)', margin: '0 0 16px', fontSize: 'var(--text-sm)' }}>
+              Bunk day / time with people counts as being out. Spin unlocks after you get home —
+              no pressure to rush. Tap when you walk in.
+            </p>
+            <Button
+              variant="primary"
+              onClick={async () => {
+                await homeArrival.imHome();
+                await refresh();
+              }}
+            >
+              I&apos;m home — unlock free time
+            </Button>
+          </Card>
+        )}
+        {action && homeReady && (
           <Card style={{ marginBottom: 16, textAlign: 'center', padding: '24px 16px' }}>
             <div style={{ fontSize: 48, marginBottom: 8 }}>🎡</div>
             <p style={{ fontSize: 'var(--text-lg)', fontWeight: 600, margin: '0 0 8px' }}>
-              Free time — spin the wheel
+              You&apos;re home — free time
             </p>
             <p style={{ color: 'var(--color-text-secondary)', margin: '0 0 16px', fontSize: 'var(--text-sm)' }}>
-              Sat / Sun (or whenever you scheduled this phase). Spin for K-drama, games, coding, or rest.
+              Spin for K-drama, games, coding, or rest. Sessions stop by 9:00 so bath + sleep still fit.
             </p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
               <Link to="/spin">

@@ -42,12 +42,10 @@ const DEFAULTS: SeedProfile[] = [
     enabled: true,
     systemKey: 'bunk',
     effects: fx({
-      bannerMessage: 'Bunk day — home early, afternoon free',
-      disableModuleTags: [],
-      // Soft: keep base routines but user can skip college block manually;
-      // College module still primary.
+      bannerMessage: 'Bunk day — out until you get home, then free time + spin',
+      disableModuleTags: ['college'],
       hideModules: [],
-      focusModules: ['today', 'college', 'learning', 'development', 'entertainment', 'social'],
+      focusModules: ['today', 'spin', 'entertainment', 'social', 'learning', 'guitar'],
       foodPlan: 'Flexible — home or local.',
       travelPlan: 'No full college commute / early return.',
       checklist: [

@@ -2,13 +2,13 @@
  * Existing installs still have weekday-only hygiene + empty DayProgress.
  * This migrates routines to daily, ensures Spin phase, rebuilds today.
  */
-import { routinesRepo, dayProgressRepo } from '../data/repository';
+import { routinesRepo, dayProgressRepo, dayProfilesRepo } from '../data/repository';
 import { isFeatureEnabled, setFeatureEnabled } from '../data/settings';
 import { ensureSpinPhaseExists } from './phaseSeed';
 import { resolvePhasesForDate } from './phaseEngine';
 import { toIsoDate } from '../routine/engine';
 
-const MIGRATE_FLAG = 'weekendJourneyMigrated_v2';
+const MIGRATE_FLAG = 'weekendJourneyMigrated_v3';
 
 const DAILY_TITLES = new Set([
   'wake up',
@@ -22,6 +22,24 @@ const DAILY_TITLES = new Set([
 
 export async function migrateWeekendJourney(): Promise<void> {
   await ensureSpinPhaseExists();
+
+  // Bunk profile: skip college modules; focus free time after home
+  const profiles = await dayProfilesRepo.list();
+  for (const p of profiles) {
+    if (p.deleted || p.systemKey !== 'bunk') continue;
+    const tags = p.effects?.disableModuleTags ?? [];
+    if (!tags.includes('college')) {
+      await dayProfilesRepo.update(p.id, {
+        effects: {
+          ...p.effects,
+          disableModuleTags: [...tags, 'college'],
+          bannerMessage: 'Bunk day — out until home, then free time + spin',
+          focusModules: ['today', 'spin', 'entertainment', 'social', 'learning', 'guitar'],
+        },
+      });
+    }
+  }
+
 
   if (!(await isFeatureEnabled(MIGRATE_FLAG, false))) {
     const routines = await routinesRepo.list();
@@ -75,6 +93,24 @@ export async function rebuildTodayIfEmpty(date: Date = new Date()): Promise<void
 
 export async function forceRebuildToday(date: Date = new Date()): Promise<void> {
   await ensureSpinPhaseExists();
+
+  // Bunk profile: skip college modules; focus free time after home
+  const profiles = await dayProfilesRepo.list();
+  for (const p of profiles) {
+    if (p.deleted || p.systemKey !== 'bunk') continue;
+    const tags = p.effects?.disableModuleTags ?? [];
+    if (!tags.includes('college')) {
+      await dayProfilesRepo.update(p.id, {
+        effects: {
+          ...p.effects,
+          disableModuleTags: [...tags, 'college'],
+          bannerMessage: 'Bunk day — out until home, then free time + spin',
+          focusModules: ['today', 'spin', 'entertainment', 'social', 'learning', 'guitar'],
+        },
+      });
+    }
+  }
+
   const iso = toIsoDate(date);
   const phases = await resolvePhasesForDate(date);
   const existing = (await dayProgressRepo.list()).find((d) => d.date === iso && !d.deleted);

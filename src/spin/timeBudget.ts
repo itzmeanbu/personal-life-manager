@@ -1,10 +1,10 @@
 /**
  * Real remaining-time budget for spin activities.
- * Default cutoff 19:30 local — spin durations are clamped so they fit
+ * Default cutoff 21:00 local — spin durations are clamped so they fit
  * before guitar/evening, not fake fixed receipts.
  */
 
-export const DEFAULT_CUTOFF_HM = '19:30';
+export const DEFAULT_CUTOFF_HM = '21:00';
 
 /** Minutes from now until cutoff today. 0 if already past. */
 export function minutesUntilCutoff(

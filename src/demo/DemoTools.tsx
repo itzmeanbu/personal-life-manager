@@ -167,7 +167,7 @@ export function DemoToolsPanel() {
         </div>
         <div style={{ marginBottom: 8 }}>
           <Button variant="secondary" onClick={() => requestForceCompleteTimer()}>
-            Skip / finish running timer
+            Complete timer (log full planned time)
           </Button>
         </div>
         <Button variant="ghost" onClick={() => setOpen(false)}>

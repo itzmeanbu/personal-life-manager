@@ -20,6 +20,7 @@ import './settings-control.css';
 
 /** Module control links — private config hub, not an admin CMS. */
 const MODULE_LINKS: { label: string; path: string; hint: string }[] = [
+  { label: 'Quick day setup', path: '/quick-day', hint: 'Wake up at 9? One tap' },
   { label: 'Weekly Schedule', path: '/weekly-schedule', hint: 'Which modules run on which days' },
   { label: 'Daily Routine', path: '/routines', hint: 'Templates, times, completions' },
   { label: 'College', path: '/college', hint: 'Categories, bunk, stats' },

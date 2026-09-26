@@ -7,8 +7,11 @@ import {
   dayProgressRepo,
   routinesRepo,
   completionRecordsRepo,
+  dayAssignmentsRepo,
+  dayProfilesRepo,
+  collegeDayStatusesRepo,
 } from '../data/repository';
-import type { Phase, DayProgress, Routine, CompletionRecord } from '../data/types';
+import type { Phase, DayProgress, Routine, CompletionRecord, DayProfile } from '../data/types';
 import { toIsoDate, isRoutineScheduledOnDate, sortRoutines } from '../routine/engine';
 
 /** True for free-time / spin style phases that don't need routine rows. */
@@ -58,23 +61,67 @@ export function isPhaseComplete(
   });
 }
 
+
+/** Active DayProfile for a calendar date (assignment > bunk college status > sunday). */
+export async function resolveProfileForDate(date: Date): Promise<DayProfile | null> {
+  const iso = toIsoDate(date);
+  const dayIndex = date.getDay();
+  const [profiles, assignments, collegeDays] = await Promise.all([
+    dayProfilesRepo.list(),
+    dayAssignmentsRepo.list(),
+    collegeDayStatusesRepo.list(),
+  ]);
+  const list = profiles.filter((p) => !p.deleted && p.enabled);
+  const assign = assignments.find((a) => a.date === iso && !a.deleted);
+  if (assign) {
+    return list.find((p) => p.id === assign.profileId) ?? null;
+  }
+  const college = collegeDays.find((d) => d.date === iso && !d.deleted);
+  if (college?.status === 'bunked') {
+    return list.find((p) => p.systemKey === 'bunk') ?? null;
+  }
+  if (dayIndex === 0) {
+    return list.find((p) => p.systemKey === 'sunday') ?? null;
+  }
+  return null;
+}
+
 /** Ordered list of phases that apply on this date. */
 export async function resolvePhasesForDate(date: Date): Promise<Phase[]> {
   const all = (await phasesRepo.list()).filter((p) => p.enabled && !p.deleted);
   const dayIndex = date.getDay();
   const sorted = [...all].sort((a, b) => a.order - b.order);
+  const profile = await resolveProfileForDate(date);
+  const effects = profile?.effects;
+  const isBunk = profile?.systemKey === 'bunk';
 
   const routines = await routinesRepo.list();
   const applicable: Phase[] = [];
   for (const phase of sorted) {
-    if (phase.activeDays.length > 0 && !phase.activeDays.includes(dayIndex)) {
+    // Profile can disable whole modules (e.g. college on bunk day)
+    if (effects?.disableModuleTags?.length && phase.moduleTags?.length) {
+      if (phase.moduleTags.some((t) => effects.disableModuleTags.includes(t))) {
+        continue;
+      }
+    }
+    // Bunk day: never show College phase
+    if (isBunk && phase.moduleTags?.includes('college')) {
       continue;
     }
+
+    const onActiveDay =
+      phase.activeDays.length === 0 || phase.activeDays.includes(dayIndex);
+    // Bunk day forces Spin phase even on weekdays
+    const forceSpin = isBunk && isActionPhase(phase);
+
+    if (!onActiveDay && !forceSpin) {
+      continue;
+    }
+
     const items = routinesForPhase(phase, routines, date);
     if (items.length > 0) {
       applicable.push(phase);
-    } else if (isActionPhase(phase)) {
-      // Spin / free-time always shows on its active days even with no routines
+    } else if (isActionPhase(phase) || forceSpin) {
       applicable.push(phase);
     } else if (
       phase === sorted[sorted.length - 1] ||

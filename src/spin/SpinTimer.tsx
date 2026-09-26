@@ -56,9 +56,15 @@ export function SpinTimer({ durationMinutes, label, onComplete }: Props) {
   }, [done, label, onComplete]);
 
   useEffect(() => {
-    registerForceCompleteTimer(() => finish());
+    // DEMO "complete timer" = log the full planned block (not a short skip)
+    registerForceCompleteTimer(() => {
+      setDone(true);
+      setRemaining(0);
+      if (intervalRef.current) window.clearInterval(intervalRef.current);
+      onComplete?.(durationMinutes);
+    });
     return () => registerForceCompleteTimer(null);
-  }, [finish]);
+  }, [durationMinutes, onComplete]);
 
   useEffect(() => {
     if (paused || done) return;
