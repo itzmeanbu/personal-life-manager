@@ -1,0 +1,237 @@
+.wk-tabs {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+  overflow-x: auto;
+}
+
+.wk-tab {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.wk-tab--active {
+  background: var(--mod-workout);
+  color: #0B0B10;
+  border-color: transparent;
+}
+
+.wk-hero {
+  margin-bottom: var(--space-4);
+}
+
+.wk-hero__day {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--mod-workout);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.wk-hero__title {
+  margin: 4px 0;
+  font-size: var(--text-xl);
+}
+
+.wk-muted {
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  margin: 4px 0 0;
+  line-height: 1.4;
+}
+
+.wk-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.wk-tag {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 122, 122, 0.15);
+  color: var(--mod-workout);
+  font-weight: 600;
+}
+
+.wk-ex-row {
+  padding: var(--space-4) var(--space-5);
+}
+
+.wk-ex-row__name {
+  font-weight: 600;
+}
+
+.wk-ex-row__presc {
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  margin-top: 2px;
+}
+
+.wk-session-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.wk-log-card {
+  margin-bottom: var(--space-3);
+}
+
+.wk-log-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.wk-log-card__name {
+  font-weight: 700;
+}
+
+.wk-status {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--color-surface-hover);
+  color: var(--color-text-secondary);
+}
+
+.wk-status--done {
+  background: rgba(52, 211, 153, 0.2);
+  color: var(--color-success);
+}
+
+.wk-status--skipped {
+  background: rgba(251, 107, 107, 0.15);
+  color: var(--color-danger);
+}
+
+.wk-status--partial {
+  background: rgba(255, 176, 32, 0.15);
+  color: var(--color-warm);
+}
+
+.wk-instructions {
+  font-size: var(--text-sm);
+  margin-top: 6px;
+  color: var(--color-text-primary);
+}
+
+.wk-sets {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wk-set-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wk-set-label {
+  width: 48px;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.wk-log-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.wk-log-controls {
+  margin-top: 10px;
+}
+
+.wk-field-label {
+  display: block;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  margin: 10px 0 4px;
+}
+
+.wk-input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+}
+
+.wk-input--sm {
+  width: 80px;
+  flex: 0 0 80px;
+}
+
+.wk-textarea {
+  resize: vertical;
+}
+
+.wk-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.wk-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: var(--text-sm);
+}
+
+.wk-prog-row,
+.wk-hist-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: var(--space-4) var(--space-5);
+}
+
+.wk-prog-row__title {
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.wk-day-pill {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--color-surface-hover);
+  color: var(--color-text-secondary);
+}
+
+.wk-link {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  padding: 0;
+  white-space: nowrap;
+}

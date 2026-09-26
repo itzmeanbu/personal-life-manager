@@ -1,0 +1,99 @@
+.en-tabs {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+  overflow-x: auto;
+}
+.en-tab {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.en-tab--active {
+  background: var(--mod-entertainment);
+  color: #0B0B10;
+  border-color: transparent;
+}
+.en-cat-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: var(--space-4);
+}
+.en-chip {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.en-chip--on {
+  background: var(--mod-entertainment);
+  color: #0B0B10;
+  border-color: transparent;
+}
+.en-input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  margin-top: 4px;
+}
+.en-field {
+  margin-bottom: 10px;
+}
+.en-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+.en-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: var(--space-4) var(--space-5);
+  align-items: flex-start;
+}
+.en-muted {
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  margin: 4px 0 0;
+}
+.en-link {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  padding: 0;
+}
+.en-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.en-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.en-badge--watched {
+  background: rgba(52, 211, 153, 0.2);
+  color: var(--color-success);
+}
+.en-badge--unwatched {
+  background: rgba(255, 159, 90, 0.2);
+  color: var(--mod-entertainment);
+}

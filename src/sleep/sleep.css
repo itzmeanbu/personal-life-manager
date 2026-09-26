@@ -1,0 +1,97 @@
+.sl-tabs {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+  overflow-x: auto;
+}
+.sl-tab {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.sl-tab--active {
+  background: var(--mod-progress);
+  color: #0B0B10;
+  border-color: transparent;
+}
+.sl-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.sl-stat {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+}
+.sl-stat__value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--mod-progress);
+}
+.sl-stat__label {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+.sl-input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  margin-top: 4px;
+}
+.sl-field {
+  margin-bottom: 12px;
+}
+.sl-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+.sl-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: var(--space-4) var(--space-5);
+}
+.sl-muted {
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  margin: 4px 0 0;
+}
+.sl-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.sl-badge--on_time {
+  background: rgba(52, 211, 153, 0.2);
+  color: var(--color-success);
+}
+.sl-badge--late {
+  background: rgba(251, 107, 107, 0.15);
+  color: var(--color-danger);
+}
+.sl-badge--early {
+  background: rgba(139, 124, 255, 0.2);
+  color: var(--color-accent-strong);
+}
+.sl-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}

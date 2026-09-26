@@ -1,0 +1,12 @@
+.ap-tabs { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; }
+.ap-tab { flex-shrink: 0; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text-secondary); font-size: var(--text-sm); font-weight: 600; }
+.ap-tab--active { background: linear-gradient(90deg, #8B7CFF, #C084FC); color: #0B0B10; border-color: transparent; }
+.ap-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.ap-thumb { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px; border: 2px solid transparent; }
+.ap-thumb--on { border-color: var(--color-accent); }
+.ap-muted { color: var(--color-text-secondary); font-size: 13px; line-height: 1.4; }
+.ap-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.ap-input { width: 100%; padding: 10px 14px; border-radius: 10px; background: var(--color-bg); border: 1px solid var(--color-border-strong); color: var(--color-text-primary); font-size: var(--text-sm); margin-top: 4px; }
+.ap-field { margin-bottom: 12px; }
+.ap-field label { display: block; font-size: 12px; font-weight: 600; color: var(--color-text-secondary); }
+.ap-toggle { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--color-border); }

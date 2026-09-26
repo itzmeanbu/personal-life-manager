@@ -1,0 +1,146 @@
+.home-overlay-stack {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--bottom-nav-height, 64px) + 12px);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 16px;
+  pointer-events: none;
+}
+
+.home-overlay {
+  pointer-events: auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 16px;
+  padding: 16px 18px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+}
+
+.home-overlay--welcome {
+  border-color: rgba(111, 227, 192, 0.4);
+}
+
+.home-overlay--late {
+  border-color: rgba(251, 107, 107, 0.45);
+}
+
+.home-overlay--workout {
+  border-color: rgba(255, 122, 122, 0.45);
+}
+
+.home-overlay__title {
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin-bottom: 4px;
+}
+
+.home-overlay__body {
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  margin: 0 0 12px;
+  line-height: 1.4;
+}
+
+.home-overlay__hint {
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  margin: 0 0 12px;
+}
+
+.home-overlay__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ha-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ha-toggle-row:last-child {
+  border-bottom: none;
+}
+
+.ha-toggle-row__label {
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+
+.ha-toggle-row__hint {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.ha-switch {
+  width: 48px;
+  height: 28px;
+  border-radius: 999px;
+  border: none;
+  background: var(--color-surface-hover);
+  position: relative;
+  flex-shrink: 0;
+  transition: background 0.15s ease;
+}
+
+.ha-switch--on {
+  background: var(--color-accent);
+}
+
+.ha-switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.15s ease;
+}
+
+.ha-switch--on::after {
+  transform: translateX(20px);
+}
+
+.ha-input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  margin-top: 4px;
+}
+
+.ha-field {
+  margin-bottom: 12px;
+}
+
+.ha-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.ha-note {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.ha-note--warn {
+  color: var(--color-warm);
+}

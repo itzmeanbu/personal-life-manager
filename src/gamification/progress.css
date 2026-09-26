@@ -1,0 +1,203 @@
+.pg-hero {
+  position: relative;
+  border-radius: 20px;
+  padding: 22px 20px 20px;
+  background:
+    radial-gradient(120% 80% at 100% 0%, rgba(192, 132, 252, 0.22), transparent 55%),
+    radial-gradient(90% 70% at 0% 100%, rgba(111, 227, 192, 0.12), transparent 50%),
+    linear-gradient(160deg, #16161f 0%, #121218 100%);
+  border: 1px solid var(--color-border-strong);
+  overflow: hidden;
+  margin-bottom: var(--space-5);
+}
+.pg-hero__eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+.pg-hero__title {
+  font-size: 1.65rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 6px 0 4px;
+  line-height: 1.15;
+}
+.pg-hero__sub {
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+}
+.pg-xp-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 16px;
+}
+.pg-xp-value {
+  font-size: 2rem;
+  font-weight: 800;
+  background: linear-gradient(90deg, #c084fc, #6fe3c0);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.pg-xp-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.pg-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  margin-top: 10px;
+}
+.pg-bar__fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #8b7cff, #c084fc 60%, #6fe3c0);
+  transition: width 0.4s ease;
+}
+.pg-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: var(--space-5);
+}
+.pg-tile {
+  border-radius: 16px;
+  padding: 14px 14px 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  min-height: 88px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.pg-tile__label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-tertiary);
+}
+.pg-tile__value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-top: 6px;
+  line-height: 1.25;
+}
+.pg-tile__hint {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin-top: 4px;
+}
+.pg-tile--accent {
+  border-color: rgba(192, 132, 252, 0.35);
+  background: linear-gradient(145deg, rgba(192, 132, 252, 0.1), var(--color-surface));
+}
+.pg-streaks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: var(--space-5);
+}
+.pg-streak {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+.pg-streak__count {
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: var(--color-warm);
+}
+.pg-ach {
+  display: grid;
+  gap: 8px;
+  margin-bottom: var(--space-5);
+}
+.pg-ach-card {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+.pg-ach-card--locked {
+  opacity: 0.45;
+}
+.pg-ach-card__icon {
+  font-size: 1.4rem;
+  width: 36px;
+  text-align: center;
+}
+.pg-ach-card__title {
+  font-weight: 700;
+  font-size: var(--text-sm);
+}
+.pg-ach-card__desc {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+.pg-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+}
+.pg-tab {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.pg-tab--active {
+  background: var(--mod-progress);
+  color: #0B0B10;
+  border-color: transparent;
+}
+.pg-muted {
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+}
+.pg-input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  margin-top: 4px;
+}
+.pg-field {
+  margin-bottom: 10px;
+}
+.pg-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+.pg-context {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-accent-strong);
+  margin-bottom: 8px;
+}

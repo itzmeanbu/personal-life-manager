@@ -1,0 +1,123 @@
+.mu-tabs {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+  overflow-x: auto;
+}
+.mu-tab {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.mu-tab--active {
+  background: var(--mod-entertainment);
+  color: #0B0B10;
+  border-color: transparent;
+}
+.mu-player {
+  text-align: center;
+  padding: var(--space-5);
+}
+.mu-player__title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  margin: 8px 0 4px;
+}
+.mu-player__meta {
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+}
+.mu-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+.mu-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: var(--space-4) var(--space-5);
+  align-items: center;
+}
+.mu-muted {
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  margin: 4px 0 0;
+}
+.mu-input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  margin-top: 4px;
+}
+.mu-field {
+  margin-bottom: 12px;
+}
+.mu-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+.mu-link {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  padding: 0;
+}
+.mu-chip {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.mu-chip--on {
+  background: var(--mod-entertainment);
+  color: #0B0B10;
+  border-color: transparent;
+}
+.mu-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.mu-note {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}
+.mu-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 16px;
+}
+.mu-modal__card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--color-surface);
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid var(--color-border-strong);
+}

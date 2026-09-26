@@ -1,0 +1,133 @@
+.sp-tabs {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+  overflow-x: auto;
+}
+.sp-tab {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.sp-tab--active {
+  background: var(--mod-entertainment);
+  color: #0B0B10;
+  border-color: transparent;
+}
+.sp-wheel-visual {
+  width: 220px;
+  height: 220px;
+  margin: 12px auto;
+  border-radius: 50%;
+  border: 6px solid var(--color-border-strong);
+  background: conic-gradient(
+    from 0deg,
+    #ff9f5a,
+    #ff8fc7,
+    #9aa5ff,
+    #6fe3c0,
+    #ffd166,
+    #ff9f5a
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: transform 1.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.sp-wheel-visual__hub {
+  width: 70%;
+  height: 70%;
+  border-radius: 50%;
+  background: var(--color-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 12px;
+  font-weight: 700;
+  font-size: var(--text-sm);
+  line-height: 1.3;
+}
+.sp-path {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin-bottom: 8px;
+}
+.sp-result {
+  text-align: center;
+  margin: 16px 0;
+}
+.sp-result__label {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--mod-entertainment);
+}
+.sp-result__meta {
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  margin-top: 4px;
+}
+.sp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 12px;
+}
+.sp-input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  margin-top: 4px;
+}
+.sp-field {
+  margin-bottom: 10px;
+}
+.sp-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+.sp-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: var(--space-4) var(--space-5);
+  align-items: flex-start;
+}
+.sp-muted {
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  margin: 4px 0 0;
+}
+.sp-link {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  padding: 0;
+}
+.sp-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(255, 159, 90, 0.2);
+  color: var(--mod-entertainment);
+  text-transform: uppercase;
+}
+.sp-option-card {
+  margin-bottom: 10px;
+}

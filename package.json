@@ -1,0 +1,33 @@
+{
+  "name": "life-manager-frontend",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.2",
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/android": "^6.1.2",
+    "dexie": "^4.0.8",
+    "dexie-react-hooks": "^1.1.7",
+    "@capacitor/app": "^6.0.1",
+    "@capacitor/geolocation": "^6.0.1",
+    "@aparajita/capacitor-secure-storage": "^6.0.4",
+    "capacitor-native-biometric": "^4.2.1",
+    "@capacitor-community/privacy-screen": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.2",
+    "@capacitor/cli": "^6.1.2"
+  }
+}

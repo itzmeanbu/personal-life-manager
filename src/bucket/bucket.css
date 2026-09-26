@@ -1,0 +1,16 @@
+.bk-tabs { display: flex; gap: var(--space-2); margin-bottom: var(--space-5); overflow-x: auto; }
+.bk-tab { flex-shrink: 0; padding: 8px 14px; border-radius: var(--radius-full); background: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-text-secondary); font-size: var(--text-sm); font-weight: 600; }
+.bk-tab--active { background: var(--mod-bucket); color: #0B0B10; border-color: transparent; }
+.bk-input { width: 100%; padding: 10px 14px; border-radius: 10px; background: var(--color-bg); border: 1px solid var(--color-border-strong); color: var(--color-text-primary); font-size: var(--text-sm); margin-top: 4px; }
+.bk-field { margin-bottom: 10px; }
+.bk-field label { display: block; font-size: 12px; font-weight: 600; color: var(--color-text-secondary); }
+.bk-row { display: flex; justify-content: space-between; gap: 10px; padding: var(--space-4) var(--space-5); align-items: flex-start; }
+.bk-muted { color: var(--color-text-secondary); font-size: var(--text-sm); margin: 4px 0 0; }
+.bk-link { background: none; border: none; color: var(--color-text-secondary); font-size: var(--text-sm); font-weight: 600; padding: 0; }
+.bk-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+.bk-badge--planned { background: rgba(255, 159, 90, 0.2); color: var(--mod-bucket); }
+.bk-badge--in_progress { background: rgba(139, 124, 255, 0.2); color: var(--color-accent-strong); }
+.bk-badge--done { background: rgba(52, 211, 153, 0.2); color: var(--color-success); }
+.bk-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.bk-note { font-size: 12px; color: var(--color-text-secondary); line-height: 1.4; }
+.bk-photo { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; border: 1px solid var(--color-border); }
