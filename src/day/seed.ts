@@ -35,25 +35,8 @@ const DEFAULTS: SeedProfile[] = [
       hideModules: [],
     }),
   },
-  {
-    name: 'Bunk Day',
-    icon: '🏃',
-    description: 'Home early. Afternoon free for skills, coding, games, social.',
-    enabled: true,
-    systemKey: 'bunk',
-    effects: fx({
-      bannerMessage: 'Bunk day — out until you get home, then free time + spin',
-      disableModuleTags: [],
-      hideModules: [],
-      focusModules: ['today', 'spin', 'entertainment', 'social', 'learning', 'guitar'],
-      foodPlan: 'Flexible — home or local.',
-      travelPlan: 'No full college commute / early return.',
-      checklist: [
-        { id: cid(), title: 'Decide home arrival time' },
-        { id: cid(), title: 'Plan afternoon skill block' },
-      ],
-    }),
-  },
+  // Bunk is NOT a planned Day Type — it is a College attendance status only.
+  // Historical DayProfile rows with systemKey 'bunk' are preserved but never re-seeded.
   {
     name: 'Exam Day',
     icon: '📝',
@@ -233,20 +216,74 @@ const DEFAULTS: SeedProfile[] = [
       ],
     }),
   },
+  {
+    name: 'Family / Relatives Function',
+    icon: '👨‍👩‍👧‍👦',
+    description: 'Planned family or relatives function — travel, event window, then resume day.',
+    enabled: true,
+    systemKey: 'family_function',
+    effects: fx({
+      replaceBaseRoutines: false,
+      bannerMessage: 'Family / relatives function — routines adapt around the event',
+      disableModuleTags: [],
+      hideModules: [],
+      focusModules: ['today', 'social', 'money', 'bike'],
+      foodPlan: 'Often at the function / outside.',
+      travelPlan: 'Allow travel buffer before and after the function.',
+      checklist: [
+        { id: cid(), title: 'Confirm time & location' },
+        { id: cid(), title: 'Travel plan / leave buffer' },
+        { id: cid(), title: 'Outfit / gift if needed' },
+      ],
+      // User sets concrete start/end via DayAssignment notes or extraAgendaItems when assigning.
+      extraAgendaItems: [],
+      activateSpinWheelNames: [],
+    }),
+  },
 ];
+
+/** Disable legacy "Bunk Day" profiles so they are not offered as planned day types. */
+export async function disableLegacyBunkProfiles(): Promise<void> {
+  const list = await dayProfilesRepo.list();
+  for (const p of list) {
+    if (p.systemKey === 'bunk' && p.enabled) {
+      await dayProfilesRepo.update(p.id, {
+        enabled: false,
+        name: p.name.includes('(legacy)') ? p.name : `${p.name} (legacy)`,
+        description:
+          (p.description ?? '') +
+          ' — Deprecated: bunk is a College status, not a planned Day Type.',
+      });
+    }
+  }
+}
+
+/** Ensure Family / Relatives Function profile exists even if day profiles were already seeded. */
+export async function ensureFamilyFunctionProfile(): Promise<void> {
+  const list = await dayProfilesRepo.list(true);
+  const has = list.some((p) => p.systemKey === 'family_function' && !p.deleted);
+  if (has) return;
+  const maxOrder = list.reduce((m, p) => Math.max(m, p.order ?? 0), 0);
+  const seed = DEFAULTS.find((d) => d.systemKey === 'family_function');
+  if (!seed) return;
+  await dayProfilesRepo.create({ ...seed, order: maxOrder + 1 });
+}
 
 export function seedDayProfilesIfNeeded(): Promise<void> {
   return runSeedOnce(SEED_FLAG, async () => {
-  if (await isFeatureEnabled(SEED_FLAG, false)) return;
-  const existing = await dayProfilesRepo.list();
-  if (existing.length > 0) {
+    if (await isFeatureEnabled(SEED_FLAG, false)) return;
+    const existing = await dayProfilesRepo.list();
+    if (existing.length > 0) {
+      await setFeatureEnabled(SEED_FLAG, true);
+      // Still run migrations for existing installs
+      await disableLegacyBunkProfiles();
+      await ensureFamilyFunctionProfile();
+      return;
+    }
+    let order = 0;
+    for (const p of DEFAULTS) {
+      await dayProfilesRepo.create({ ...p, order: order++ });
+    }
     await setFeatureEnabled(SEED_FLAG, true);
-    return;
-  }
-  let order = 0;
-  for (const p of DEFAULTS) {
-    await dayProfilesRepo.create({ ...p, order: order++ });
-  }
-  await setFeatureEnabled(SEED_FLAG, true);
-});
+  });
 }

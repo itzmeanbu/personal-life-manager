@@ -7,7 +7,11 @@ import { SecurityProvider, useSecurity } from './security/SecurityProvider';
 import { LockScreen } from './components/security/LockScreen';
 import { ensureDefaultRoutinesSeeded } from './routine/seed';
 import { seedCollegeCategoriesIfNeeded } from './college/defaults';
-import { seedDayProfilesIfNeeded } from './day/seed';
+import {
+  seedDayProfilesIfNeeded,
+  disableLegacyBunkProfiles,
+  ensureFamilyFunctionProfile,
+} from './day/seed';
 import { seedWorkoutEngineIfNeeded } from './workout/seed';
 import { seedSpinWheelsIfNeeded } from './spin/seed';
 import { ensureWeeklyChoresOnSpin } from './spin/weeklyChores';
@@ -60,7 +64,9 @@ function App() {
     void Promise.all([
       ensureDefaultRoutinesSeeded(),
       seedCollegeCategoriesIfNeeded(),
-      seedDayProfilesIfNeeded(),
+      seedDayProfilesIfNeeded().then(() =>
+        Promise.all([disableLegacyBunkProfiles(), ensureFamilyFunctionProfile()])
+      ),
       seedWorkoutEngineIfNeeded(),
       seedSpinWheelsIfNeeded().then(() => ensureWeeklyChoresOnSpin()),
       seedEntertainmentCategoriesIfNeeded(),

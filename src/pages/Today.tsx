@@ -21,6 +21,7 @@ import { PeriodBoard } from '../day/PeriodBoard';
 import { WellnessCard } from '../day/WellnessCard';
 import { HomeArrivalPrompt } from '../day/HomeArrivalPrompt';
 import { DueNotifyCard } from '../day/DueNotifyCard';
+import { FreeTimeSpinCard } from '../day/FreeTimeSpinCard';
 
 /**
  * Day Brief — professional daily command surface.
@@ -32,9 +33,9 @@ export default function Today() {
   const todayIso = toIsoDate(today.date);
   const [showFinished, setShowFinished] = useState(false);
 
-  const bunkStatus = useLiveQuery(async () => {
+  const collegeStatus = useLiveQuery(async () => {
     const rows = await collegeDayStatusesRepo.list();
-    return rows.find((d) => d.date === todayIso && !d.deleted && d.status === 'bunked');
+    return rows.find((d) => d.date === todayIso && !d.deleted) ?? null;
   }, [todayIso]);
 
   const todaySpins = useLiveQuery(async () => {
@@ -66,6 +67,7 @@ export default function Today() {
     >
       <PeriodBoard date={today.date} />
       <DueNotifyCard />
+      <FreeTimeSpinCard date={today.date} />
       <SpendPromptsCard date={today.date} />
       <HomeArrivalPrompt date={today.date} />
       <MealPrompt date={today.date} />
@@ -90,31 +92,43 @@ export default function Today() {
         </Card>
       )}
 
-      {bunkStatus && (
-        <Card style={{ marginBottom: 12 }}>
-          <strong>🏃 Bunk day</strong>
-          <p style={{ color: 'var(--color-text-secondary)', marginTop: 4 }}>
-            Home early
-            {bunkStatus.homeArrivalTime
-              ? ` around ${formatArrivalTime(bunkStatus.homeArrivalTime)}`
-              : ''}
-            . Afternoon/evening is free — log activities in College.
-          </p>
-          <Link to="/college" style={{ marginTop: 8, display: 'inline-block' }}>
-            <Button variant="secondary">Open College</Button>
-          </Link>
-        </Card>
-      )}
+      {collegeStatus &&
+        (collegeStatus.status === 'bunked' ||
+          collegeStatus.status === 'left_early' ||
+          collegeStatus.status === 'attended') && (
+          <Card style={{ marginBottom: 12 }}>
+            <strong>
+              {collegeStatus.status === 'attended'
+                ? '🎓 College: attended'
+                : collegeStatus.status === 'left_early'
+                  ? '🚪 College: left early'
+                  : '🏃 College: bunked'}
+            </strong>
+            <p style={{ color: 'var(--color-text-secondary)', marginTop: 4 }}>
+              {collegeStatus.status === 'attended'
+                ? 'Full day — you can switch to Left early later if needed.'
+                : `Free time starts${
+                    collegeStatus.homeArrivalTime
+                      ? ` around ${formatArrivalTime(collegeStatus.homeArrivalTime)}`
+                      : ''
+                  }. Morning routines stay normal.`}
+            </p>
+            <Link to="/college" style={{ marginTop: 8, display: 'inline-block' }}>
+              <Button variant="secondary">Open College</Button>
+            </Link>
+          </Card>
+        )}
 
       {today.isWeekend && (
         <Card style={{ marginBottom: 12 }}>
-          <strong>Weekend Mode</strong>
+          <strong>Weekend</strong>
           <p style={{ color: 'var(--color-text-secondary)', marginTop: 4 }}>
-            It&apos;s {today.dayName} — morning checklist, then free time.
+            It&apos;s {today.dayName} — day starts when you wake. Spin is available until 10:00
+            PM.
           </p>
           <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Link to="/">
-              <Button variant="secondary">Day Journey (Home)</Button>
+              <Button variant="secondary">Day Journey</Button>
             </Link>
             <Link to="/spin">
               <Button variant="primary">Spin Wheel</Button>
@@ -130,9 +144,7 @@ export default function Today() {
             {todaySpins.map((h) => (
               <li key={h.id} style={{ marginBottom: 6, fontSize: 'var(--text-sm)' }}>
                 <span style={{ fontWeight: 600 }}>
-                  {(h as { label?: string; wheelName?: string }).label ??
-                    (h as { wheelName?: string }).wheelName ??
-                    'Spin'}
+                  {h.optionLabel ?? h.wheelName ?? 'Spin'}
                 </span>
                 {(h.actualMinutes ?? h.durationMinutes) != null && (
                   <span style={{ color: 'var(--color-text-secondary)' }}>
@@ -145,6 +157,9 @@ export default function Today() {
                     {' '}
                     · {formatIsoTime12(h.startedAt)}
                   </span>
+                )}
+                {h.completed === false && (
+                  <span style={{ color: 'var(--color-text-secondary)' }}> · in progress</span>
                 )}
               </li>
             ))}

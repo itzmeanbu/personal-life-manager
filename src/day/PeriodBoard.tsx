@@ -22,10 +22,11 @@ import { collegeDayStatusesRepo } from '../data/repository';
 import { useLiveQuery } from 'dexie-react-hooks';
 
 function modeLabel(
-  order: TomorrowDayOrder | 'attended' | 'bunked' | 'none' | null
+  order: TomorrowDayOrder | 'attended' | 'bunked' | 'left_early' | 'none' | null
 ): string {
   if (order === 'college' || order === 'attended') return '🎓 College day';
-  if (order === 'bunk' || order === 'bunked') return '🏃 Bunk day';
+  if (order === 'bunk' || order === 'bunked') return '🏃 College: bunked';
+  if (order === 'left_early') return '🚪 College: left early';
   if (order === 'leave') return '🏠 Leave / holiday';
   if (order === 'coimbatore_stay') return '🌆 Coimbatore stay';
   return 'Mode not set';
@@ -64,12 +65,15 @@ export function PeriodBoard({ date = new Date() }: { date?: Date }) {
   const statusFromCollege =
     college?.status === 'bunked'
       ? 'bunked'
-      : college?.status === 'attended'
-        ? 'attended'
-        : null;
-  const mode: TomorrowDayOrder | 'attended' | 'bunked' | 'none' | null =
+      : college?.status === 'left_early'
+        ? 'left_early'
+        : college?.status === 'attended'
+          ? 'attended'
+          : null;
+  const mode: TomorrowDayOrder | 'attended' | 'bunked' | 'left_early' | 'none' | null =
     fromNight && fromNight !== 'unset' ? fromNight : statusFromCollege;
 
+  // Full bunk skips timetable; left_early still shows morning periods as normal
   const showTimetable =
     mode !== 'bunk' &&
     mode !== 'bunked' &&

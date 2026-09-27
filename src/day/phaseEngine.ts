@@ -62,24 +62,25 @@ export function isPhaseComplete(
 }
 
 
-/** Active DayProfile for a calendar date (assignment > bunk college status > sunday). */
+/**
+ * Active DayProfile for a calendar date.
+ * Order: explicit DayAssignment → Sunday auto → normal (null).
+ * College bunk / left-early is NEVER converted into a Day Type profile.
+ * Free-time is derived from CollegeDayStatus + fixed routines by the spin budget engine.
+ */
 export async function resolveProfileForDate(date: Date): Promise<DayProfile | null> {
   const iso = toIsoDate(date);
   const dayIndex = date.getDay();
-  const [profiles, assignments, collegeDays] = await Promise.all([
+  const [profiles, assignments] = await Promise.all([
     dayProfilesRepo.list(),
     dayAssignmentsRepo.list(),
-    collegeDayStatusesRepo.list(),
   ]);
   const list = profiles.filter((p) => !p.deleted && p.enabled);
   const assign = assignments.find((a) => a.date === iso && !a.deleted);
   if (assign) {
     return list.find((p) => p.id === assign.profileId) ?? null;
   }
-  const college = collegeDays.find((d) => d.date === iso && !d.deleted);
-  if (college?.status === 'bunked') {
-    return list.find((p) => p.systemKey === 'bunk') ?? null;
-  }
+  // Do NOT map college.status === 'bunked' → Bunk profile.
   if (dayIndex === 0) {
     return list.find((p) => p.systemKey === 'sunday') ?? null;
   }
@@ -93,27 +94,32 @@ export async function resolvePhasesForDate(date: Date): Promise<Phase[]> {
   const sorted = [...all].sort((a, b) => a.order - b.order);
   const profile = await resolveProfileForDate(date);
   const effects = profile?.effects;
-  const isBunk = profile?.systemKey === 'bunk';
-  const isRest = profile?.systemKey === 'rest' || profile?.systemKey === 'holiday' || profile?.systemKey === 'stay_out';
-  const forceSpinDay = isBunk || isRest;
+  // Legacy bunk profiles (if any still enabled) are treated like rest for module filtering only.
+  const isLegacyBunkProfile = profile?.systemKey === 'bunk';
+  const isRest =
+    profile?.systemKey === 'rest' ||
+    profile?.systemKey === 'holiday' ||
+    profile?.systemKey === 'stay_out' ||
+    profile?.systemKey === 'family_function';
+  const forceSpinDay = isLegacyBunkProfile || profile?.systemKey === 'rest';
 
   const routines = await routinesRepo.list();
   const applicable: Phase[] = [];
   for (const phase of sorted) {
-    // Profile can disable whole modules (e.g. college on bunk day)
+    // Profile can disable whole modules
     if (effects?.disableModuleTags?.length && phase.moduleTags?.length) {
       if (phase.moduleTags.some((t) => effects.disableModuleTags.includes(t))) {
         continue;
       }
     }
-    // Rest/holiday: skip college. Bunk keeps college day structure (resume after free time).
-    if (isRest && !isBunk && phase.moduleTags?.includes('college')) {
+    // Rest/holiday/family function: skip college phase structure when appropriate
+    if (isRest && !isLegacyBunkProfile && phase.moduleTags?.includes('college')) {
       continue;
     }
 
     const onActiveDay =
       phase.activeDays.length === 0 || phase.activeDays.includes(dayIndex);
-    // Bunk day forces Spin phase even on weekdays
+    // Rest-style profiles may surface Spin phase on weekdays
     const forceSpin = forceSpinDay && isActionPhase(phase);
 
     if (!onActiveDay && !forceSpin) {

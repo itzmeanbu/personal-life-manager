@@ -274,15 +274,31 @@ export interface CollegeActivity extends BaseEntity {
 }
 
 /**
- * Day-level college status. Separate from activity logs so the user can
- * mark attended/bunked without necessarily logging every sub-activity.
- * When status === 'bunked', homeArrivalTime is the chosen early-home time.
+ * Day-level college attendance status. NOT a planned Day Type / Special Day.
+ * Bunk / left-early is a reactive college status only — morning routines stay
+ * normal; free-time windows are derived when the user leaves early.
+ *
+ * Status values:
+ * - 'none'       : not answered yet
+ * - 'attended'   : went to college (full day unless leftEarlyTime set)
+ * - 'left_early' : left early / half day (homeArrivalTime = when free time starts)
+ * - 'bunked'     : full bunk / skipped college (legacy + full skip; homeArrivalTime optional)
+ *
+ * Backward compatible: older rows may still use only 'attended' | 'bunked' | 'none'.
  */
+export type CollegeAttendanceStatus =
+  | 'none'
+  | 'attended'
+  | 'left_early'
+  | 'bunked';
+
 export interface CollegeDayStatus extends BaseEntity {
   date: string; // yyyy-mm-dd local, unique per day
-  status: 'attended' | 'bunked' | 'none';
-  /** "HH:mm" — only meaningful when status === 'bunked'. */
+  status: CollegeAttendanceStatus;
+  /** "HH:mm" — when free time / home window starts (left early or bunk). */
   homeArrivalTime?: string;
+  /** Optional: when user actually left campus ("HH:mm"). */
+  leftEarlyTime?: string;
   notes?: string;
 }
 
@@ -478,6 +494,11 @@ export interface SpinHistory extends BaseEntity {
   /** Actual elapsed minutes (from startedAt→endedAt), not a fake receipt. */
   actualMinutes?: number;
   completed: boolean;
+  /** Why this spin was offered: free_time | weekend | manual | college_early | profile */
+  source?: 'free_time' | 'weekend' | 'manual' | 'college_early' | 'profile' | string;
+  /** Free-time window this spin belonged to ("HH:mm"–"HH:mm"). */
+  windowStartHm?: string;
+  windowEndHm?: string;
 }
 
 /**
@@ -738,12 +759,15 @@ export interface DayProfile extends BaseEntity {
   order: number;
   enabled: boolean;
   /**
-   * Built-in keys the app may auto-link (e.g. bunk → 'bunk').
+   * Built-in keys the app may auto-link.
+   * 'bunk' is deprecated — bunk is a College status, not a planned Day Type.
+   * Kept only for migration of historical DayProfile rows.
+   * 'family_function' = Family / Relatives Function (planned event day).
    * Custom profiles use null.
    */
   systemKey?:
     | 'normal'
-    | 'bunk'
+    | 'bunk' // deprecated — do not seed or auto-assign
     | 'exam'
     | 'hackathon'
     | 'event'
@@ -751,6 +775,7 @@ export interface DayProfile extends BaseEntity {
     | 'rest'
     | 'stay_out'
     | 'sunday'
+    | 'family_function'
     | null;
   effects: DayProfileEffects;
 }
@@ -863,6 +888,34 @@ export interface AchievementUnlock extends BaseEntity {
   notified?: boolean;
 }
 
+/* --------------------------------- Water --------------------------------- */
+
+/**
+ * User water preferences (stored in appSettings under key 'water.settings').
+ * Only goal, serving size, and optional window are configured by the user;
+ * all reminder times are computed deterministically by the water engine.
+ */
+export interface WaterSettings {
+  dailyGoalMl: number; // e.g. 2000
+  servingMl: number; // e.g. 250
+  /** Optional preferred start "HH:mm" (default derived from wake / weekend wake). */
+  preferredStartHm?: string | null;
+  /** Optional preferred end "HH:mm" (default before night/sleep). */
+  preferredEndHm?: string | null;
+  enabled: boolean;
+}
+
+/** One logged water intake event (real user action, never invented). */
+export interface WaterLog extends BaseEntity {
+  date: string; // yyyy-mm-dd
+  amountMl: number;
+  /** ISO timestamp when logged. */
+  loggedAt: string;
+  /** Optional source: manual | reminder | quick */
+  source?: 'manual' | 'reminder' | 'quick' | string;
+  notes?: string;
+}
+
 export type EntityName =
   | 'routines'
   | 'tasks'
@@ -905,4 +958,5 @@ export type EntityName =
   | 'featureToggles'
   | 'automationSettings'
   | 'phases'
-  | 'dayProgress';
+  | 'dayProgress'
+  | 'waterLogs';

@@ -20,6 +20,9 @@ export type NotifyAction =
   | 'canteen'
   | 'lunch'
   | 'home'
+  | 'college'
+  | 'college_early'
+  | 'spin'
   | 'custom';
 
 export interface NotifyRule {
@@ -65,9 +68,33 @@ export const DEFAULT_RULES: NotifyRule[] = [
     custom: false,
   },
   {
+    id: 'n_college',
+    title: 'Did you go to college today?',
+    body: 'Answer on Day Brief or College — Attended / Left early / Bunked.',
+    enabled: true,
+    kind: 'once',
+    times: ['09:30'],
+    days: [1, 2, 3, 4, 5],
+    action: 'college',
+    custom: false,
+  },
+  {
+    id: 'n_college_early',
+    title: 'Leaving college early?',
+    body: 'If you leave early, set free-time start so Spin can open automatically.',
+    enabled: true,
+    kind: 'window',
+    times: [],
+    startHm: '14:00',
+    endHm: '17:30',
+    days: [1, 2, 3, 4, 5],
+    action: 'college_early',
+    custom: false,
+  },
+  {
     id: 'n_water',
-    title: 'Drink water',
-    body: 'Log a glass on Day Brief.',
+    title: '💧 Time for some water',
+    body: '250 ml — log on Day Brief.',
     enabled: true,
     kind: 'interval',
     times: [],

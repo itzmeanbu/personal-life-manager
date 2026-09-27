@@ -1,5 +1,6 @@
 /**
- * Default college categories and bunk-day configuration.
+ * Default college categories and early-leave / home-arrival configuration.
+ * Bunk is a College status (not a planned Day Type).
  * Seeded once per install; every row is fully editable afterwards.
  * No historical activity records are invented — only empty categories.
  */
@@ -24,6 +25,7 @@ type SeedCategory = Omit<
 
 const DEFAULT_CATEGORIES: SeedCategory[] = [
   { name: 'Attended college', icon: '🎓', enabled: true, systemKey: 'attended' },
+  { name: 'Left early / half day', icon: '🚪', enabled: true, systemKey: null },
   { name: 'Bunked college', icon: '🏃', enabled: true, systemKey: 'bunked' },
   { name: 'Skill development', icon: '📚', enabled: true, systemKey: null },
   { name: 'Coding', icon: '💻', enabled: true, systemKey: null },
