@@ -23,6 +23,10 @@ export function isOptionAvailable(opt: SpinWheelOption, nowMins = nowLocalMinute
   if (opt.availableBeforeHm) {
     if (nowMins > hmToMinutes(opt.availableBeforeHm)) return false;
   }
+  if (opt.availableDays && opt.availableDays.length > 0) {
+    const day = new Date().getDay();
+    if (!opt.availableDays.includes(day)) return false;
+  }
   return true;
 }
 
@@ -49,6 +53,10 @@ export function formatAvailability(opt: SpinWheelOption): string {
   const parts: string[] = [];
   if (opt.availableAfterHm) parts.push(`after ${opt.availableAfterHm}`);
   if (opt.availableBeforeHm) parts.push(`before ${opt.availableBeforeHm}`);
+  if (opt.availableDays && opt.availableDays.length > 0) {
+    const names = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    parts.push(opt.availableDays.map((d) => names[d] ?? d).join('/'));
+  }
   if (opt.durationMinutes) parts.push(`${opt.durationMinutes} min`);
   return parts.join(' · ');
 }

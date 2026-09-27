@@ -94,7 +94,7 @@ export async function resolvePhasesForDate(date: Date): Promise<Phase[]> {
   const profile = await resolveProfileForDate(date);
   const effects = profile?.effects;
   const isBunk = profile?.systemKey === 'bunk';
-  const isRest = profile?.systemKey === 'rest' || profile?.systemKey === 'holiday';
+  const isRest = profile?.systemKey === 'rest' || profile?.systemKey === 'holiday' || profile?.systemKey === 'stay_out';
   const forceSpinDay = isBunk || isRest;
 
   const routines = await routinesRepo.list();
@@ -106,8 +106,8 @@ export async function resolvePhasesForDate(date: Date): Promise<Phase[]> {
         continue;
       }
     }
-    // Bunk day: never show College phase
-    if ((isBunk || isRest) && phase.moduleTags?.includes('college')) {
+    // Rest/holiday: skip college. Bunk keeps college day structure (resume after free time).
+    if (isRest && !isBunk && phase.moduleTags?.includes('college')) {
       continue;
     }
 

@@ -35,9 +35,11 @@ const BucketList = lazy(() => import('../pages/BucketList'));
 const Settings = lazy(() => import('../pages/Settings'));
 const WeeklySchedule = lazy(() => import('../pages/settings/WeeklySchedule'));
 const QuickDay = lazy(() => import('../pages/settings/QuickDay'));
+const LifestyleWizard = lazy(() => import('../pages/settings/LifestyleWizard'));
 const Appearance = lazy(() => import('../pages/Appearance'));
 const HomeAutomation = lazy(() => import('../pages/HomeAutomation'));
 const SpecialDays = lazy(() => import('../pages/SpecialDays'));
+const NotificationsPage = lazy(() => import('../pages/settings/NotificationsPage'));
 
 /**
  * Single source of truth for navigation: the Home grid, the Module Drawer,
@@ -45,7 +47,7 @@ const SpecialDays = lazy(() => import('../pages/SpecialDays'));
  * here instead of three separate places to keep in sync.
  */
 export const MODULES: ModuleDef[] = [
-  { id: 'today', label: 'Today', path: '/today', emoji: '📅', monogram: 'TD', colorVar: '--mod-today', Component: Today },
+  { id: 'today', label: 'Day Brief', path: '/today', emoji: '📅', monogram: 'TD', colorVar: '--mod-today', Component: Today },
   { id: 'routines', label: 'Routines', path: '/routines', emoji: '📋', monogram: 'RT', colorVar: '--mod-routines', Component: RoutineManager },
   { id: 'college', label: 'College', path: '/college', emoji: '🎓', monogram: 'CG', colorVar: '--mod-college', emphasizeOnDays: [1, 2, 3, 4, 5], Component: College },
   { id: 'workout', label: 'Workout', path: '/workout', emoji: '🏋️', monogram: 'WK', colorVar: '--mod-workout', Component: Workout },
@@ -67,6 +69,8 @@ export const MODULES: ModuleDef[] = [
   { id: 'appearance', label: 'Appearance', path: '/appearance', emoji: '🎨', monogram: 'AP', colorVar: '--mod-settings', Component: Appearance },
   { id: 'weekly-schedule', label: 'Weekly Schedule', path: '/weekly-schedule', emoji: '📅', monogram: 'WS', colorVar: '--mod-settings', Component: WeeklySchedule },
   { id: 'quick-day', label: 'Quick day setup', path: '/quick-day', emoji: '⏰', monogram: 'QD', colorVar: '--mod-settings', Component: QuickDay },
+  { id: 'easy-setup', label: 'Easy setup', path: '/easy-setup', emoji: '✨', monogram: 'ES', colorVar: '--mod-settings', Component: LifestyleWizard },
+  { id: 'notifications', label: 'Notifications', path: '/notifications', emoji: '🔔', monogram: 'NT', colorVar: '--mod-settings', Component: NotificationsPage },
   { id: 'settings', label: 'Settings', path: '/settings', emoji: '⚙️', monogram: '⚙', colorVar: '--mod-settings', Component: Settings },
 ];
 

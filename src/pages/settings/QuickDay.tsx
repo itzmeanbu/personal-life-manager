@@ -8,6 +8,7 @@ import { PageShell } from '../../components/ui/PageShell';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { routinesRepo } from '../../data/repository';
+import { formatHm12 } from '../../lib/timeFormat';
 
 const WAKE_OPTIONS = ['05:00', '05:30', '06:00', '06:30', '07:00', '07:30', '08:00', '08:30', '09:00', '09:30', '10:00'];
 const SLEEP_OPTIONS = ['21:00', '21:30', '22:00', '22:30', '23:00', '23:30', '00:00'];
@@ -56,7 +57,7 @@ export default function QuickDay() {
       <Card style={{ marginBottom: 16 }}>
         <strong>When do you want to wake up?</strong>
         <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', margin: '6px 0 12px' }}>
-          Current: {wake?.time ?? 'not set'}
+          Current: {wake?.time ? formatHm12(wake.time) : 'not set'}
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {WAKE_OPTIONS.map((hm) => (
@@ -65,7 +66,7 @@ export default function QuickDay() {
               variant={wake?.time === hm ? 'primary' : 'secondary'}
               onClick={() => setWake(hm)}
             >
-              {hm}
+              {formatHm12(hm)}
             </Button>
           ))}
         </div>
@@ -74,7 +75,7 @@ export default function QuickDay() {
       <Card style={{ marginBottom: 16 }}>
         <strong>Sleep target</strong>
         <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', margin: '6px 0 12px' }}>
-          Current: {sleep?.time ?? 'not set'} · Spin sessions wind down by 21:00 so this still fits.
+          Current: {sleep?.time ? formatHm12(sleep.time) : 'not set'} · Spin sessions wind down by 21:00 so this still fits.
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {SLEEP_OPTIONS.map((hm) => (
@@ -83,7 +84,7 @@ export default function QuickDay() {
               variant={sleep?.time === hm ? 'primary' : 'secondary'}
               onClick={() => setSleep(hm)}
             >
-              {hm}
+              {formatHm12(hm)}
             </Button>
           ))}
         </div>

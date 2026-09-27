@@ -13,14 +13,21 @@ import { useDailyAgenda } from '../routine/hooks';
 import { deriveStatus, STATUS_LABELS } from '../routine/engine';
 import { markPhaseComplete, isActionPhase } from '../day/phaseEngine';
 import { forceRebuildToday } from '../day/migrateWeekend';
-import { pickEncouragement } from '../home/encourage';
+import {
+  pickEncouragement,
+  consequenceForTitle,
+  isPastBunkSpinWindow,
+  BUNK_SPIN_END_HM,
+} from '../home/encourage';
 import { MealPrompt } from '../day/MealPrompt';
+import { DayAsksCard } from '../day/DayAsksCard';
 import { getContinueCandidates } from '../entertainment/continue';
 import { dayAssignmentsRepo } from '../data/repository';
 import { toIsoDate } from '../routine/engine';
 import { AppLogo } from '../appearance/AppLogo';
 import { useHomeArrival } from '../home/HomeArrivalProvider';
 import { useActiveDayProfile } from '../day/hooks';
+import { formatHm12 } from '../lib/timeFormat';
 import '../day/day.css';
 
 export default function Home() {
@@ -44,6 +51,7 @@ export default function Home() {
   const continueWatch = useLiveQuery(() => getContinueCandidates(2), [], []);
   const [savingTomorrow, setSavingTomorrow] = useState(false);
   const [tomorrowSaved, setTomorrowSaved] = useState<string | null>(null);
+  const [skipRoast, setSkipRoast] = useState<string | null>(null);
 
   const tomorrowIso = useMemo(() => {
     const d = new Date(today.date);
@@ -88,6 +96,15 @@ export default function Home() {
       await refresh();
     },
     [setStatus, clearStatus, refresh]
+  );
+
+  const skipItem = useCallback(
+    async (routineId: string, title: string) => {
+      await setStatus(routineId, 'skipped');
+      setSkipRoast(consequenceForTitle(title));
+      await refresh();
+    },
+    [setStatus, refresh]
   );
 
   const finishSpinPhase = useCallback(async () => {
@@ -194,7 +211,7 @@ export default function Home() {
     const quickProfiles = profiles.filter((p) => p.enabled).slice(0, 8);
     const tileHint = (key?: string | null) => {
       switch (key) {
-        case 'bunk': return 'Home early · spin after you arrive';
+        case 'bunk': return 'College day · home early · free time · then resume';
         case 'rest': return 'Spin wheel day · no college';
         case 'holiday': return 'Off day · free time';
         case 'hackathon': return 'Build mode · sleep optional';
@@ -274,8 +291,7 @@ export default function Home() {
 
           {tomorrowSaved && (
             <p style={{ color: 'var(--color-accent)', fontSize: 'var(--text-sm)', marginTop: 8 }}>
-              ✓ Tomorrow is “{tomorrowSaved}” — phases will follow that plan (e.g. bunk = no college,
-              spin after you get home).
+              ✓ Tomorrow is “{tomorrowSaved}” — e.g. bunk = still college day, home early for free time, then evening resumes.
             </p>
           )}
 
@@ -297,11 +313,17 @@ export default function Home() {
 
 
   const isBunk = profile?.systemKey === 'bunk';
+  const isLeaveOrRest =
+    profile?.systemKey === 'rest' ||
+    profile?.systemKey === 'holiday' ||
+    today.isWeekend;
   const homeReady =
-    !isBunk ||
+    !(isBunk || profile?.systemKey === 'stay_out') ||
     homeArrival.insideHome === true ||
     (homeArrival.lastEvent?.kind === 'enter_home' &&
       homeArrival.lastEvent.at.slice(0, 10) === (progress?.date ?? ''));
+  /** Bunk: spin only until ~19:30, then evening like normal college day */
+  const bunkSpinClosed = isBunk && isPastBunkSpinWindow();
 
   const action = isActionPhase(currentPhase);
 
@@ -363,6 +385,13 @@ export default function Home() {
         <Card style={{ marginBottom: 12, borderLeft: '3px solid var(--color-accent)' }}>
           <p style={{ margin: 0, fontSize: 'var(--text-sm)' }}>{nudgeText}</p>
         </Card>
+        {skipRoast && (
+          <Card style={{ marginBottom: 12, borderLeft: '3px solid #e85d4c' }}>
+            <p style={{ margin: 0, fontSize: 'var(--text-sm)' }}>{skipRoast}</p>
+            <Button variant="ghost" onClick={() => setSkipRoast(null)}>Got it</Button>
+          </Card>
+        )}
+        <DayAsksCard date={today.date} />
         <MealPrompt date={today.date} />
         {continueWatch && continueWatch.length > 0 && (
           <Card style={{ marginBottom: 12 }}>
@@ -385,8 +414,7 @@ export default function Home() {
               Out of the house
             </p>
             <p style={{ color: 'var(--color-text-secondary)', margin: '0 0 16px', fontSize: 'var(--text-sm)' }}>
-              Bunk day / time with people counts as being out. Spin unlocks after you get home —
-              no pressure to rush. Tap when you walk in.
+              Bunk = college day, just home early. Spin unlocks when you arrive — then resume the rest of the day.
             </p>
             <Button
               variant="primary"
@@ -399,14 +427,30 @@ export default function Home() {
             </Button>
           </Card>
         )}
-        {action && homeReady && (
+        {action && homeReady && bunkSpinClosed && (
+          <Card style={{ marginBottom: 16, textAlign: 'center', padding: '24px 16px' }}>
+            <div style={{ fontSize: 40, marginBottom: 8 }}>🌆</div>
+            <p style={{ fontSize: 'var(--text-lg)', fontWeight: 600, margin: '0 0 8px' }}>
+              Free time closed ({BUNK_SPIN_END_HM})
+            </p>
+            <p style={{ color: 'var(--color-text-secondary)', margin: '0 0 16px', fontSize: 'var(--text-sm)' }}>
+              Free hour’s over — resume college-day evening: workout (if today), bath, treatment, sleep.
+            </p>
+            <Button variant="primary" onClick={finishSpinPhase}>
+              Continue to evening →
+            </Button>
+          </Card>
+        )}
+        {action && homeReady && !bunkSpinClosed && (
           <Card style={{ marginBottom: 16, textAlign: 'center', padding: '24px 16px' }}>
             <div style={{ fontSize: 48, marginBottom: 8 }}>🎡</div>
             <p style={{ fontSize: 'var(--text-lg)', fontWeight: 600, margin: '0 0 8px' }}>
-              You&apos;re home — free time
+              {isBunk ? "You're home — bunk free time" : isLeaveOrRest ? 'Leave / rest — spin time' : "You're home — free time"}
             </p>
             <p style={{ color: 'var(--color-text-secondary)', margin: '0 0 16px', fontSize: 'var(--text-sm)' }}>
-              Spin for K-drama, games, coding, or rest. Sessions stop by 9:00 so bath + sleep still fit.
+              {isBunk
+                ? `Still a college day. Spin until ${BUNK_SPIN_END_HM}, then resume evening (workout → bath → sleep).`
+                : 'Spin for K-drama, games, coding, or rest. Finish each spin before the next.'}
             </p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
               <Link to="/spin">
@@ -496,11 +540,28 @@ export default function Home() {
                             color: 'var(--color-text-secondary)',
                           }}
                         >
-                          {routine.time}
+                          {formatHm12(routine.time)}
                           {routine.durationMinutes ? ` · ${routine.durationMinutes}m` : ''}
                         </div>
                       )}
                     </div>
+                    <button
+                      type="button"
+                      className="day-journey__skip"
+                      style={{
+                        border: 'none',
+                        background: 'transparent',
+                        color: 'var(--color-text-secondary)',
+                        fontSize: 'var(--text-sm)',
+                        cursor: 'pointer',
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void skipItem(routine.id, routine.title);
+                      }}
+                    >
+                      Skip
+                    </button>
                   </Card>
                 </li>
               );

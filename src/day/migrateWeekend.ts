@@ -9,7 +9,7 @@ import { emptyEffects } from './effects';
 import { resolvePhasesForDate } from './phaseEngine';
 import { toIsoDate } from '../routine/engine';
 
-const MIGRATE_FLAG = 'weekendJourneyMigrated_v4';
+const MIGRATE_FLAG = 'weekendJourneyMigrated_v5';
 
 const DAILY_TITLES = new Set([
   'wake up',
@@ -24,21 +24,18 @@ const DAILY_TITLES = new Set([
 export async function migrateWeekendJourney(): Promise<void> {
   await ensureSpinPhaseExists();
 
-  // Bunk profile: skip college modules; focus free time after home
+  // Bunk = college day + early home free time, then resume evening (do not strip college)
   const profiles = await dayProfilesRepo.list();
   for (const p of profiles) {
     if (p.deleted || p.systemKey !== 'bunk') continue;
-    const tags = p.effects?.disableModuleTags ?? [];
-    if (!tags.includes('college')) {
-      await dayProfilesRepo.update(p.id, {
-        effects: {
-          ...p.effects,
-          disableModuleTags: [...tags, 'college'],
-          bannerMessage: 'Bunk day — out until home, then free time + spin',
-          focusModules: ['today', 'spin', 'entertainment', 'social', 'learning', 'guitar'],
-        },
-      });
-    }
+    await dayProfilesRepo.update(p.id, {
+      effects: {
+        ...p.effects,
+        disableModuleTags: (p.effects?.disableModuleTags ?? []).filter((t) => t !== 'college'),
+        bannerMessage: 'Bunk day — college day; home early → free time → resume evening',
+        focusModules: ['today', 'college', 'spin', 'workout', 'entertainment', 'guitar', 'sleep'],
+      },
+    });
   }
 
 
@@ -119,21 +116,18 @@ export async function rebuildTodayIfEmpty(date: Date = new Date()): Promise<void
 export async function forceRebuildToday(date: Date = new Date()): Promise<void> {
   await ensureSpinPhaseExists();
 
-  // Bunk profile: skip college modules; focus free time after home
+  // Bunk = college day + early home free time, then resume evening (do not strip college)
   const profiles = await dayProfilesRepo.list();
   for (const p of profiles) {
     if (p.deleted || p.systemKey !== 'bunk') continue;
-    const tags = p.effects?.disableModuleTags ?? [];
-    if (!tags.includes('college')) {
-      await dayProfilesRepo.update(p.id, {
-        effects: {
-          ...p.effects,
-          disableModuleTags: [...tags, 'college'],
-          bannerMessage: 'Bunk day — out until home, then free time + spin',
-          focusModules: ['today', 'spin', 'entertainment', 'social', 'learning', 'guitar'],
-        },
-      });
-    }
+    await dayProfilesRepo.update(p.id, {
+      effects: {
+        ...p.effects,
+        disableModuleTags: (p.effects?.disableModuleTags ?? []).filter((t) => t !== 'college'),
+        bannerMessage: 'Bunk day — college day; home early → free time → resume evening',
+        focusModules: ['today', 'college', 'spin', 'workout', 'entertainment', 'guitar', 'sleep'],
+      },
+    });
   }
 
   const iso = toIsoDate(date);

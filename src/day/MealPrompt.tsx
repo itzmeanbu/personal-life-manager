@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { toIsoDate } from '../routine/engine';
+import { formatHm12 } from '../lib/timeFormat';
 import {
   getMealGate,
   setMealGate,
@@ -117,7 +118,7 @@ export function MealPrompt({ date = new Date() }: { date?: Date }) {
   if (state.ate === false && state.eatAtHm && !state.remindedAt) {
     return (
       <Card style={{ marginBottom: 12 }}>
-        <strong>Eating at {state.eatAtHm}</strong>
+        <strong>Eating at {formatHm12(state.eatAtHm)}</strong>
         <p style={{ margin: '6px 0 8px', fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
           We&apos;ll nudge you then. After you eat, mark it so the 30-min break starts.
         </p>
@@ -131,7 +132,7 @@ export function MealPrompt({ date = new Date() }: { date?: Date }) {
   if (state.ate === false && state.remindedAt) {
     return (
       <Card style={{ marginBottom: 12, borderLeft: '3px solid var(--color-accent)' }}>
-        <strong>Eat now ({state.eatAtHm})</strong>
+        <strong>Eat now ({formatHm12(state.eatAtHm)})</strong>
         <p style={{ margin: '6px 0 8px', fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
           You planned this. When you&apos;re done, mark it.
         </p>
@@ -164,7 +165,7 @@ export function MealPrompt({ date = new Date() }: { date?: Date }) {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {EAT_TIMES.map((hm) => (
               <Button key={hm} variant="ghost" onClick={() => pickTime(hm)}>
-                {hm}
+                {formatHm12(hm)}
               </Button>
             ))}
           </div>

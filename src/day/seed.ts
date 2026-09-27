@@ -43,7 +43,7 @@ const DEFAULTS: SeedProfile[] = [
     systemKey: 'bunk',
     effects: fx({
       bannerMessage: 'Bunk day — out until you get home, then free time + spin',
-      disableModuleTags: ['college'],
+      disableModuleTags: [],
       hideModules: [],
       focusModules: ['today', 'spin', 'entertainment', 'social', 'learning', 'guitar'],
       foodPlan: 'Flexible — home or local.',

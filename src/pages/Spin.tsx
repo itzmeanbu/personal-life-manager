@@ -17,6 +17,7 @@ import { pickRandomFromWatchlist } from '../entertainment/random';
 import { toIsoDate } from '../routine/engine';
 import { SpinTimer } from '../spin/SpinTimer';
 import { planSpinDuration, formatMinutes, DEFAULT_CUTOFF_HM } from '../spin/timeBudget';
+import { formatIsoTime12 } from '../lib/timeFormat';
 import { continueSuggestion } from '../entertainment/continue';
 import '../spin/spin.css';
 
@@ -811,7 +812,7 @@ export default function Spin() {
               </div>
               <div className="sp-muted">
                 {(h.path ?? []).join(' → ')}
-                {h.actualMinutes != null ? ` · lived ${h.actualMinutes}m` : h.durationMinutes ? ` · planned ${h.durationMinutes}m` : ''}{h.startedAt ? ` · ${new Date(h.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}{h.completed ? '' : ' · in progress'}
+                {h.actualMinutes != null ? ` · lived ${h.actualMinutes}m` : h.durationMinutes ? ` · planned ${h.durationMinutes}m` : ''}{h.startedAt ? ` · ${formatIsoTime12(h.startedAt)}` : ''}{h.completed ? '' : ' · in progress'}
               </div>
             </div>
           </div>

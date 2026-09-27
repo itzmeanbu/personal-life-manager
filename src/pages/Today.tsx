@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { PageShell } from '../components/ui/PageShell';
@@ -10,11 +11,26 @@ import { useDailyAgenda } from '../routine/hooks';
 import { collegeDayStatusesRepo, spinHistoriesRepo } from '../data/repository';
 import { toIsoDate } from '../routine/engine';
 import { formatArrivalTime } from '../college/stats';
+import { formatHm12, formatIsoTime12 } from '../lib/timeFormat';
+import { DayAsksCard } from '../day/DayAsksCard';
+import { MealPrompt } from '../day/MealPrompt';
+import { SpendPromptsCard } from '../day/SpendPromptsCard';
+import { DaySpendSummary } from '../day/DaySpendSummary';
+import { TomorrowOrderCard } from '../day/TomorrowOrderCard';
+import { PeriodBoard } from '../day/PeriodBoard';
+import { WellnessCard } from '../day/WellnessCard';
+import { HomeArrivalPrompt } from '../day/HomeArrivalPrompt';
+import { DueNotifyCard } from '../day/DueNotifyCard';
 
+/**
+ * Day Brief — professional daily command surface.
+ * Yes/No asks, spend prompts, day order, timetable, agenda that vanishes when done.
+ */
 export default function Today() {
   const today = useToday();
   const { agenda, reminders, setStatus, clearStatus, profile } = useDailyAgenda(today.date);
   const todayIso = toIsoDate(today.date);
+  const [showFinished, setShowFinished] = useState(false);
 
   const bunkStatus = useLiveQuery(async () => {
     const rows = await collegeDayStatusesRepo.list();
@@ -25,13 +41,22 @@ export default function Today() {
     const rows = await spinHistoriesRepo.list();
     return rows
       .filter((h) => !h.deleted && h.date === todayIso && h.completed)
-      .filter((h) => (h.actualMinutes ?? h.durationMinutes ?? 0) <= 12 * 60) // hide nonsense 1190m demos
-      .sort((a, b) => (a.startedAt ?? a.createdAt) < (b.startedAt ?? b.createdAt) ? 1 : -1);
+      .filter((h) => (h.actualMinutes ?? h.durationMinutes ?? 0) <= 12 * 60)
+      .sort((a, b) =>
+        (a.startedAt ?? a.createdAt) < (b.startedAt ?? b.createdAt) ? 1 : -1
+      );
   }, [todayIso], []);
+
+  const openAgenda = agenda.filter(
+    ({ status }) => status !== 'done' && status !== 'skipped'
+  );
+  const finishedAgenda = agenda.filter(
+    ({ status }) => status === 'done' || status === 'skipped' || status === 'partial'
+  );
 
   return (
     <PageShell
-      title="Today"
+      title="Day Brief"
       showBack={false}
       right={
         <Link to="/routines">
@@ -39,8 +64,18 @@ export default function Today() {
         </Link>
       }
     >
+      <PeriodBoard date={today.date} />
+      <DueNotifyCard />
+      <SpendPromptsCard date={today.date} />
+      <HomeArrivalPrompt date={today.date} />
+      <MealPrompt date={today.date} />
+      <DayAsksCard date={today.date} />
+      <WellnessCard date={today.date} />
+      <DaySpendSummary date={today.date} />
+      <TomorrowOrderCard date={today.date} />
+
       {profile && profile.systemKey !== 'bunk' && (
-        <Card>
+        <Card style={{ marginBottom: 12 }}>
           <strong>
             {profile.icon ?? '⭐'} {profile.name}
           </strong>
@@ -54,27 +89,28 @@ export default function Today() {
           </Link>
         </Card>
       )}
+
       {bunkStatus && (
-        <Card>
+        <Card style={{ marginBottom: 12 }}>
           <strong>🏃 Bunk day</strong>
           <p style={{ color: 'var(--color-text-secondary)', marginTop: 4 }}>
             Home early
             {bunkStatus.homeArrivalTime
               ? ` around ${formatArrivalTime(bunkStatus.homeArrivalTime)}`
               : ''}
-            . Afternoon/evening is free — log activities in the College module.
-            Normal college-day routines stay in the template unchanged.
+            . Afternoon/evening is free — log activities in College.
           </p>
           <Link to="/college" style={{ marginTop: 8, display: 'inline-block' }}>
             <Button variant="secondary">Open College</Button>
           </Link>
         </Card>
       )}
+
       {today.isWeekend && (
-        <Card>
+        <Card style={{ marginBottom: 12 }}>
           <strong>Weekend Mode</strong>
           <p style={{ color: 'var(--color-text-secondary)', marginTop: 4 }}>
-            It's {today.dayName} — do morning checklist on Home, then free time.
+            It&apos;s {today.dayName} — morning checklist, then free time.
           </p>
           <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Link to="/">
@@ -86,15 +122,6 @@ export default function Today() {
           </div>
         </Card>
       )}
-      {today.isSunday && (
-        <Card>
-          <strong>Sunday Reset</strong>
-          <p style={{ color: 'var(--color-text-secondary)', marginTop: 4 }}>
-            A good day to plan the week ahead — this space will host that ritual.
-          </p>
-        </Card>
-      )}
-
 
       {todaySpins && todaySpins.length > 0 && (
         <Card style={{ marginBottom: 12 }}>
@@ -102,48 +129,84 @@ export default function Today() {
           <ul style={{ margin: '8px 0 0', paddingLeft: 18 }}>
             {todaySpins.map((h) => (
               <li key={h.id} style={{ marginBottom: 6, fontSize: 'var(--text-sm)' }}>
-                <span style={{ fontWeight: 600 }}>{h.optionLabel}</span>
-                {' · '}
-                {h.actualMinutes ?? h.durationMinutes ?? '?'}m
-                {h.startedAt
-                  ? ` · ${new Date(h.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-                  : ''}
+                <span style={{ fontWeight: 600 }}>
+                  {(h as { label?: string; wheelName?: string }).label ??
+                    (h as { wheelName?: string }).wheelName ??
+                    'Spin'}
+                </span>
+                {(h.actualMinutes ?? h.durationMinutes) != null && (
+                  <span style={{ color: 'var(--color-text-secondary)' }}>
+                    {' '}
+                    · {h.actualMinutes ?? h.durationMinutes} min
+                  </span>
+                )}
+                {h.startedAt && (
+                  <span style={{ color: 'var(--color-text-secondary)' }}>
+                    {' '}
+                    · {formatIsoTime12(h.startedAt)}
+                  </span>
+                )}
               </li>
             ))}
           </ul>
-          <Link to="/spin" style={{ marginTop: 8, display: 'inline-block' }}>
-            <Button variant="ghost">Open Spin</Button>
-          </Link>
         </Card>
       )}
+
       {reminders.length > 0 && (
         <div className="reminder-banner">
-          🔔 {reminders.length === 1
+          🔔{' '}
+          {reminders.length === 1
             ? `${reminders[0].routine.title} is coming up`
             : `${reminders.length} routines are coming up`}
         </div>
       )}
 
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 8,
+        }}
+      >
+        <strong style={{ fontSize: 'var(--text-sm)' }}>Agenda</strong>
+        {finishedAgenda.length > 0 && (
+          <Button variant="ghost" onClick={() => setShowFinished((v) => !v)}>
+            {showFinished ? 'Hide finished' : `Show ${finishedAgenda.length} finished`}
+          </Button>
+        )}
+      </div>
+
       {agenda.length === 0 ? (
         <EmptyState
           icon="📋"
           title="Nothing scheduled for today"
-          description="Add a routine — recurring or one-time — and it'll show up here automatically on the days it's due."
+          description="Add a routine — recurring or one-time — and it'll show up here on the days it's due."
           action={
             <Link to="/routines">
               <Button variant="secondary">Add a routine</Button>
             </Link>
           }
         />
+      ) : openAgenda.length === 0 && !showFinished ? (
+        <Card>
+          <p style={{ margin: 0, color: 'var(--color-text-secondary)' }}>
+            All agenda items finished for today.
+          </p>
+        </Card>
       ) : (
         <Card style={{ padding: 0, display: 'flex', flexDirection: 'column' }}>
-          {agenda.map(({ routine, status }, i) => (
+          {(showFinished ? agenda : openAgenda).map(({ routine, status }, i, arr) => (
             <div
               key={routine.id}
               className="routine-item"
-              style={{ borderBottom: i < agenda.length - 1 ? '1px solid var(--color-border)' : 'none' }}
+              style={{
+                borderBottom:
+                  i < arr.length - 1 ? '1px solid var(--color-border)' : 'none',
+                opacity: status === 'done' || status === 'skipped' ? 0.55 : 1,
+              }}
             >
-              <div className="routine-item__time">{routine.time ?? '—'}</div>
+              <div className="routine-item__time">{formatHm12(routine.time)}</div>
               <div className="routine-item__body">
                 <div className="routine-item__title-row">
                   <span className="routine-item__title">{routine.title}</span>
@@ -153,14 +216,16 @@ export default function Today() {
                   {routine.category}
                   {routine.durationMinutes ? ` · ${routine.durationMinutes} min` : ''}
                 </span>
-                {routine.notes && <span className="routine-item__notes">{routine.notes}</span>}
+                {routine.notes && (
+                  <span className="routine-item__notes">{routine.notes}</span>
+                )}
                 <div className="routine-item__actions">
                   {status !== 'done' && (
                     <Button variant="secondary" onClick={() => setStatus(routine.id, 'done')}>
-                      Mark done
+                      Yes · done
                     </Button>
                   )}
-                  {status !== 'skipped' && (
+                  {status !== 'skipped' && status !== 'done' && (
                     <Button variant="ghost" onClick={() => setStatus(routine.id, 'skipped')}>
                       Skip
                     </Button>

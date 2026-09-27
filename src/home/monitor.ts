@@ -24,10 +24,16 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 let lastInside: boolean | null = null;
 let running = false;
 let listener: ArrivalListener | null = null;
+let sessionOnEnterHome: (() => void) | null = null;
 let currentConfig: HomeArrivalConfig | null = null;
 
 export function setArrivalListener(fn: ArrivalListener | null): void {
   listener = fn;
+}
+
+/** Extra hook for location-session auto-off (does not replace ArrivalListener). */
+export function setSessionOnEnterHome(fn: (() => void) | null): void {
+  sessionOnEnterHome = fn;
 }
 
 export function getMonitorInsideHome(): boolean | null {
@@ -55,6 +61,11 @@ async function onEnterHome(source: ArrivalEvent['source'], lat?: number, lng?: n
     lateCancelApplied: result.lateCancel.applied,
     lateCancelReason: result.lateCancel.reason,
   });
+  try {
+    sessionOnEnterHome?.();
+  } catch (e) {
+    console.warn('[home/monitor] sessionOnEnterHome failed', e);
+  }
 }
 
 async function pollOnce(): Promise<void> {

@@ -10,6 +10,7 @@ import { seedCollegeCategoriesIfNeeded } from './college/defaults';
 import { seedDayProfilesIfNeeded } from './day/seed';
 import { seedWorkoutEngineIfNeeded } from './workout/seed';
 import { seedSpinWheelsIfNeeded } from './spin/seed';
+import { ensureWeeklyChoresOnSpin } from './spin/weeklyChores';
 import { seedEntertainmentCategoriesIfNeeded } from './entertainment/seed';
 import { seedMusicPlaylistsIfNeeded } from './music/seed';
 import { seedBucketListIfNeeded } from './bucket/seed';
@@ -19,6 +20,7 @@ import { migrateWeekendJourney } from './day/migrateWeekend';
 import { cleanupDuplicateSeedData } from './data/dedupeSeeds';
 import { getAppearanceConfig } from './appearance/settings';
 import { HomeArrivalProvider } from './home/HomeArrivalProvider';
+import { NotificationProvider } from './notify/NotificationProvider';
 
 function AppRoutes() {
   return (
@@ -60,7 +62,7 @@ function App() {
       seedCollegeCategoriesIfNeeded(),
       seedDayProfilesIfNeeded(),
       seedWorkoutEngineIfNeeded(),
-      seedSpinWheelsIfNeeded(),
+      seedSpinWheelsIfNeeded().then(() => ensureWeeklyChoresOnSpin()),
       seedEntertainmentCategoriesIfNeeded(),
       seedMusicPlaylistsIfNeeded(),
       seedBucketListIfNeeded(),
@@ -75,7 +77,9 @@ function App() {
   return (
     <SecurityProvider>
       <HomeArrivalProvider>
-        <Gate />
+        <NotificationProvider>
+          <Gate />
+        </NotificationProvider>
       </HomeArrivalProvider>
     </SecurityProvider>
   );

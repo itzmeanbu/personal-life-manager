@@ -431,6 +431,8 @@ export interface SpinWheelOption {
    */
   availableAfterHm?: string | null;
   availableBeforeHm?: string | null;
+  /** If set, only these weekdays (0=Sun … 6=Sat). Empty/undefined = any day. */
+  availableDays?: number[];
   notes?: string;
   /** Free tags (e.g. "naveen_anna") — data only, not hard-coded behaviour. */
   tags?: string[];
