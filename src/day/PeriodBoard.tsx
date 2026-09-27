@@ -7,7 +7,6 @@ import { Button } from '../components/ui/Button';
 import { toIsoDate } from '../routine/engine';
 import { formatHm12 } from '../lib/timeFormat';
 import {
-  TIME_SLOTS,
   currentTimeSlot,
   liveClassLine,
   scheduleForDayOrder,
@@ -68,18 +67,14 @@ export function PeriodBoard({ date = new Date() }: { date?: Date }) {
       : college?.status === 'attended'
         ? 'attended'
         : null;
-  const mode =
+  const mode: TomorrowDayOrder | 'attended' | 'bunked' | 'none' | null =
     fromNight && fromNight !== 'unset' ? fromNight : statusFromCollege;
 
-  const isCollegeDay =
-    mode === 'college' ||
-    mode === 'attended' ||
-    mode === null ||
-    mode === 'unset' ||
-    (mode !== 'bunk' && mode !== 'bunked' && mode !== 'leave' && mode !== 'coimbatore_stay');
-
   const showTimetable =
-    isCollegeDay && mode !== 'bunk' && mode !== 'bunked' && mode !== 'leave';
+    mode !== 'bunk' &&
+    mode !== 'bunked' &&
+    mode !== 'leave' &&
+    mode !== 'coimbatore_stay';
 
   const pickOrder = async (n: number) => {
     await setDayOrderForDate(iso, n);

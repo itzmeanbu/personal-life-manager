@@ -149,7 +149,7 @@ export function HomeArrivalPrompt({ date = new Date() }: { date?: Date }) {
             onClick={async () => {
               setErr(null);
               try {
-                setSession(await turnLocationTrackingOn(iso, 'near_home'));
+                setSession(await turnLocationTrackingOn(iso));
               } catch (e) {
                 setErr(e instanceof Error ? e.message : 'Failed');
               }
