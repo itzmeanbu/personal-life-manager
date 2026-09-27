@@ -69,6 +69,27 @@ export function DemoToolsPanel() {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
   const [selectedTime, setSelectedTime] = useState<number | null>(null);
+  const [manualHour, setManualHour] = useState('');
+  const [manualMinute, setManualMinute] = useState('');
+  const [manualPeriod, setManualPeriod] = useState<'AM' | 'PM'>('AM');
+  const [manualError, setManualError] = useState('');
+
+  function applyManualTime() {
+    const h = parseInt(manualHour, 10);
+    const m = manualMinute.trim() === '' ? 0 : parseInt(manualMinute, 10);
+
+    if (!Number.isFinite(h) || h < 1 || h > 12 || !Number.isFinite(m) || m < 0 || m > 59) {
+      setManualError('Enter hour 1–12 and minute 0–59.');
+      return;
+    }
+    setManualError('');
+
+    let hour24 = h % 12;
+    if (manualPeriod === 'PM') hour24 += 12;
+
+    setSelectedTime(null); // custom time in use, no preset highlighted
+    setDemoTimeOfDay(hour24, m);
+  }
 
   if (!open) {
     return (
@@ -164,6 +185,66 @@ export function DemoToolsPanel() {
               Real time
             </Button>
           </div>
+        </div>
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ fontSize: 12, marginBottom: 4 }}>Or type any time (e.g. early morning):</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={12}
+              placeholder="HH"
+              value={manualHour}
+              onChange={(e) => setManualHour(e.target.value)}
+              style={{
+                width: 44,
+                padding: '4px 6px',
+                borderRadius: 6,
+                border: '1px solid var(--color-border, #ccc)',
+                background: 'var(--color-surface)',
+                color: 'var(--color-text)',
+              }}
+            />
+            <span>:</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={59}
+              placeholder="MM"
+              value={manualMinute}
+              onChange={(e) => setManualMinute(e.target.value)}
+              style={{
+                width: 44,
+                padding: '4px 6px',
+                borderRadius: 6,
+                border: '1px solid var(--color-border, #ccc)',
+                background: 'var(--color-surface)',
+                color: 'var(--color-text)',
+              }}
+            />
+            <Button
+              variant={manualPeriod === 'AM' ? 'primary' : 'secondary'}
+              onClick={() => setManualPeriod('AM')}
+            >
+              AM
+            </Button>
+            <Button
+              variant={manualPeriod === 'PM' ? 'primary' : 'secondary'}
+              onClick={() => setManualPeriod('PM')}
+            >
+              PM
+            </Button>
+            <Button variant="secondary" onClick={applyManualTime}>
+              Set
+            </Button>
+          </div>
+          {manualError && (
+            <div style={{ fontSize: 11, color: 'var(--color-danger, #e5484d)', marginTop: 4 }}>
+              {manualError}
+            </div>
+          )}
         </div>
         <div style={{ marginBottom: 8 }}>
           <Button variant="secondary" onClick={() => requestForceCompleteTimer()}>
