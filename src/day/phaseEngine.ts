@@ -9,7 +9,6 @@ import {
   completionRecordsRepo,
   dayAssignmentsRepo,
   dayProfilesRepo,
-  collegeDayStatusesRepo,
 } from '../data/repository';
 import type { Phase, DayProgress, Routine, CompletionRecord, DayProfile } from '../data/types';
 import { toIsoDate, isRoutineScheduledOnDate, sortRoutines } from '../routine/engine';

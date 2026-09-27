@@ -9,7 +9,7 @@
 
 import type { WaterLog, WaterSettings } from '../data/types';
 import { getSetting, setSetting } from '../data/settings';
-import { isWeekend, hmToMinutes, minutesToHm, parseHm } from '../spin/timeBudget';
+import { isWeekend, hmToMinutes, minutesToHm } from '../spin/timeBudget';
 
 export const WATER_SETTINGS_KEY = 'water.settings';
 

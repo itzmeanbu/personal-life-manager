@@ -11,6 +11,8 @@
  */
 
 export const DEFAULT_WEEKDAY_CUTOFF_HM = '21:00';
+/** @deprecated Alias for DEFAULT_WEEKDAY_CUTOFF_HM — used by Spin.tsx */
+export const DEFAULT_CUTOFF_HM = DEFAULT_WEEKDAY_CUTOFF_HM;
 /** Hard cutoff for Saturday/Sunday Spin system. */
 export const WEEKEND_SPIN_CUTOFF_HM = '22:00';
 /** Typical next fixed home routine after college (user-editable via routines). */
