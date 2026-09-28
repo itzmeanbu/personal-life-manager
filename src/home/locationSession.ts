@@ -11,7 +11,6 @@ import { getHomeConfig } from './settings';
 import {
   isMonitorRunning,
   startHomeMonitor,
-  stopHomeMonitor,
   setSessionOnEnterHome,
 } from './monitor';
 import type { HomeArrivalConfig } from './types';
@@ -86,7 +85,7 @@ export function isInArrivalWindow(
  */
 export async function turnLocationTrackingOn(
   dateIso: string,
-  reason: 'near_home' | 'eta' | 'manual'
+  _reason: 'near_home' | 'eta' | 'manual'
 ): Promise<LocationSessionState> {
   const config = await getHomeConfig();
   if (!config.home) {

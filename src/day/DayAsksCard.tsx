@@ -58,7 +58,8 @@ export function DayAsksCard({ date = new Date() }: { date?: Date }) {
       if (!isSlotActive('morning', now)) return;
       const s = await getWellnessDay(iso);
       if (s.notified?.morningAsks) return;
-      const pending = (await itemsForSlot('morning')).filter((i) => !((await getDayAsks(iso)).done[i.id]));
+      const asks = await getDayAsks(iso);
+      const pending = (await itemsForSlot('morning')).filter((i) => !asks.done[i.id]);
       if (pending.length === 0) return;
       await notify('Morning check', `${pending.length} things — Yes/No on Day Brief`);
       await setWellnessDay({
