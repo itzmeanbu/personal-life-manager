@@ -1,7 +1,6 @@
 import { Outlet } from 'react-router-dom';
 import { BottomNav } from '../components/navigation/BottomNav';
 import { WelcomeOverlay } from '../home/WelcomeOverlay';
-import { MorningGreeting } from '../home/MorningGreeting';
 import { BackgroundLayer } from '../appearance/BackgroundLayer';
 import { DemoToolsPanel } from '../demo/DemoTools';
 
@@ -13,7 +12,6 @@ export function AppShell() {
         <Outlet />
       </div>
       <WelcomeOverlay />
-      <MorningGreeting />
       <BottomNav />
       {/* DEMO — remove this line + src/demo/ before release */}
       <DemoToolsPanel />

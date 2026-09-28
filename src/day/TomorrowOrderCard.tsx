@@ -7,15 +7,26 @@ import { Button } from '../components/ui/Button';
 import { toIsoDate } from '../routine/engine';
 import {
   getTomorrowOrder,
-  setDayStatus,
-  effectiveDayStatus,
-  answerCodingFinished,
-  isCodingFinished,
+  setTomorrowOrder,
   TOMORROW_OPTIONS,
   type TomorrowDayOrder,
   type TomorrowOrderState,
 } from './spendPrompts';
+import { collegeDayStatusesRepo } from '../data/repository';
 import { setDayOrderForDate, suggestNextDayOrder, getDayOrderForDate } from '../college/dayOrder';
+import { assignDayType, type DayTypeKey } from './dayTypes';
+import { rescheduleAllNotifications } from '../notifications/scheduler';
+
+const ORDER_TO_TYPE: Record<string, DayTypeKey> = {
+  college: 'normal',
+  bunk: 'bunk',
+  event: 'event',
+  rest: 'rest',
+  leave: 'rest',
+  deep_work: 'deep_work',
+  coimbatore_stay: 'coimbatore_stay',
+};
+const DURATION_CHOICES = [1, 2, 3, 5, 7, 14];
 
 function addDaysIso(iso: string, days: number): string {
   const d = new Date(iso + 'T12:00:00');
@@ -23,13 +34,14 @@ function addDaysIso(iso: string, days: number): string {
   return toIsoDate(d);
 }
 
-function TomorrowPlanInner({ date = new Date() }: { date?: Date }) {
+export function TomorrowOrderCard({ date = new Date() }: { date?: Date }) {
   const todayIso = toIsoDate(date);
   const tomorrowIso = addDaysIso(todayIso, 1);
   const [state, setState] = useState<TomorrowOrderState | null | undefined>(undefined);
   const [tick, setTick] = useState(0);
   const [needOrder, setNeedOrder] = useState(false);
   const [savedOrderNum, setSavedOrderNum] = useState<number | null>(null);
+  const [pendingLong, setPendingLong] = useState<TomorrowDayOrder | null>(null);
 
   const reload = useCallback(async () => {
     setState(await getTomorrowOrder(tomorrowIso));
@@ -57,7 +69,7 @@ function TomorrowPlanInner({ date = new Date() }: { date?: Date }) {
       sessionStorage.setItem(key, '1');
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification("Tomorrow's day order", {
-          body: 'College, leave, Coimbatore stay, bunk, or coding? Set it before sleep.',
+          body: 'Campus, Early Exit, Event, Recharge, Deep Work or Coimbatore Stay? Set it before sleep.',
         });
       }
     } catch {
@@ -65,10 +77,37 @@ function TomorrowPlanInner({ date = new Date() }: { date?: Date }) {
     }
   }, [isNight, state, tomorrowIso, tick]);
 
-  const pick = async (order: TomorrowDayOrder) => {
-    const next = await setDayStatus(tomorrowIso, order);
+  const applyPick = async (order: TomorrowDayOrder, days = 1) => {
+    const next = await setTomorrowOrder(tomorrowIso, order);
     setState(next);
+
+    const typeKey = ORDER_TO_TYPE[order];
+    if (typeKey) await assignDayType(tomorrowIso, typeKey, days);
+
+    const rows = await collegeDayStatusesRepo.list();
+    const existing = rows.find((r) => r.date === tomorrowIso && !r.deleted);
+    if (order === 'bunk' || order === 'college') {
+      const status = order === 'bunk' ? 'bunked' : 'attended';
+      if (existing) {
+        await collegeDayStatusesRepo.update(existing.id, { status });
+      } else {
+        await collegeDayStatusesRepo.create({ date: tomorrowIso, status });
+      }
+    } else if (existing && existing.status === 'bunked') {
+      // Switching away from Early Exit: drop the stale bunk status.
+      await collegeDayStatusesRepo.remove(existing.id);
+    }
     setNeedOrder(order === 'college');
+    setPendingLong(null);
+    void rescheduleAllNotifications();
+  };
+
+  const pick = async (order: TomorrowDayOrder) => {
+    if (order === 'deep_work' || order === 'coimbatore_stay') {
+      setPendingLong(order); // ask how many days first
+      return;
+    }
+    await applyPick(order, 1);
   };
 
   const pickDayOrderNum = async (n: number) => {
@@ -114,7 +153,7 @@ function TomorrowPlanInner({ date = new Date() }: { date?: Date }) {
           color: 'var(--color-text-secondary)',
         }}
       >
-        Before sleep — pick mode. If College, also pick day order 1–6 (row on your TT).
+        Before sleep, pick tomorrow's day type. Any day can be any type. For Campus Day, also pick the day order 1–6.
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {TOMORROW_OPTIONS.map((o) => (
@@ -123,6 +162,22 @@ function TomorrowPlanInner({ date = new Date() }: { date?: Date }) {
           </Button>
         ))}
       </div>
+      {pendingLong && (
+        <div style={{ marginTop: 12 }}>
+          <p style={{ fontSize: 'var(--text-sm)', marginBottom: 8 }}>
+            {pendingLong === 'deep_work'
+              ? 'How many days of Deep Work, starting tomorrow?'
+              : 'How many days in Coimbatore, starting tomorrow?'}
+          </p>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {DURATION_CHOICES.map((n) => (
+              <Button key={n} variant="primary" onClick={() => applyPick(pendingLong, n)}>
+                {n} {n === 1 ? 'day' : 'days'}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
       {needOrder && (
         <div style={{ marginTop: 12 }}>
           <p style={{ fontSize: 'var(--text-sm)', marginBottom: 8 }}>
@@ -147,69 +202,5 @@ function TomorrowPlanInner({ date = new Date() }: { date?: Date }) {
         </div>
       )}
     </Card>
-  );
-}
-
-/** Night check on a coding day: finished → back to normal tomorrow; not yet → coding continues. */
-function CodingFinishedCard({ date }: { date: Date }) {
-  const todayIso = toIsoDate(date);
-  const [coding, setCoding] = useState(false);
-  const [answer, setAnswer] = useState<'yes' | 'no' | null>(null);
-
-  useEffect(() => {
-    void (async () => {
-      setCoding((await effectiveDayStatus(todayIso)) === 'coding');
-      const done = await isCodingFinished(todayIso);
-      const tomorrow = await getTomorrowOrder(addDaysIso(todayIso, 1));
-      setAnswer(done ? 'yes' : tomorrow?.order === 'coding' ? 'no' : null);
-    })();
-  }, [todayIso]);
-
-  const hour = new Date().getHours();
-  if (!coding || !(hour >= 19 || hour < 5)) return null;
-
-  const answerIt = async (finished: boolean) => {
-    await answerCodingFinished(todayIso, finished);
-    setAnswer(finished ? 'yes' : 'no');
-  };
-
-  return (
-    <Card style={{ marginBottom: 12, borderLeft: '3px solid var(--color-accent, #6c9eff)' }}>
-      <strong>💻 Coding finished?</strong>
-      {answer ? (
-        <p style={{ margin: '6px 0 8px', fontSize: 'var(--text-sm)' }}>
-          {answer === 'yes'
-            ? 'Done — tomorrow goes back to a normal day. Pick its mode below.'
-            : 'Not yet — tomorrow continues as a coding day.'}
-        </p>
-      ) : (
-        <p
-          style={{
-            margin: '4px 0 12px',
-            fontSize: 'var(--text-sm)',
-            color: 'var(--color-text-secondary)',
-          }}
-        >
-          Yes ends coding mode. No keeps the same coding-day routine tomorrow.
-        </p>
-      )}
-      <div style={{ display: 'flex', gap: 8 }}>
-        <Button variant={answer === 'yes' ? 'primary' : 'secondary'} onClick={() => answerIt(true)}>
-          Yes, finished
-        </Button>
-        <Button variant={answer === 'no' ? 'primary' : 'secondary'} onClick={() => answerIt(false)}>
-          No, continue
-        </Button>
-      </div>
-    </Card>
-  );
-}
-
-export function TomorrowOrderCard({ date = new Date() }: { date?: Date }) {
-  return (
-    <>
-      <CodingFinishedCard date={date} />
-      <TomorrowPlanInner date={date} />
-    </>
   );
 }

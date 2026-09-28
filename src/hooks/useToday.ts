@@ -19,45 +19,42 @@ const DAY_NAMES: DayName[] = [
   'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
 ];
 
-/**
- * English letters only. English + French + Korean + Japanese (romanized).
- * No Tamil, Spanish, or Hindi.
- */
+/** English + romanized Korean/Japanese + a bit of Spanish/French — all Latin script. */
 const GREETINGS = {
   lateNight: [
     'Still up?',
     'Annyeong — still awake?',
     'Oyasumi soon?',
-    'Bonsoir from the night',
-    'Late night mode',
+    'Hola, still here?',
+    'Bonjour from the night',
   ],
   morning: [
     'Good morning',
-    'Bonjour',
     'Annyeonghaseyo',
     'Ohayo',
-    'Hi — good morning',
-    'Morning',
+    'Hola',
+    'Bonjour',
   ],
   afternoon: [
     'Good afternoon',
-    'Bonjour',
     'Annyeong',
     'Konnichiwa',
+    'Hola',
+    'Bonjour',
   ],
   evening: [
     'Good evening',
-    'Bonsoir',
     'Annyeonghaseyo',
     'Konbanwa',
+    'Hola',
+    'Bonsoir',
   ],
   night: [
     'Winding down',
-    'Bonne nuit',
     'Jal jayo',
     'Oyasumi',
-    'Good night',
-    'Rest well',
+    'Buenas noches',
+    'Bonne nuit',
   ],
 };
 

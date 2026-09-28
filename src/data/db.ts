@@ -43,7 +43,6 @@ import type {
   BlobRecord,
   Phase,
   DayProgress,
-  WaterLog,
 } from './types';
 
 /**
@@ -110,7 +109,6 @@ export class LifeManagerDB extends Dexie {
   blobs!: Table<BlobRecord, string>;
   phases!: Table<Phase, string>;
   dayProgress!: Table<DayProgress, string>;
-  waterLogs!: Table<WaterLog, string>;
 
   constructor() {
     super('LifeManagerDB');
@@ -246,11 +244,6 @@ export class LifeManagerDB extends Dexie {
       phases: 'id, order, enabled, updatedAt, deleted',
       dayProgress: 'id, date, currentPhaseId, updatedAt, deleted',
     });
-
-    // Version 14 — water logs (goal/serving live in appSettings).
-    this.version(14).stores({
-      waterLogs: 'id, date, loggedAt, updatedAt, deleted',
-    });
   }
 }
 
@@ -301,5 +294,4 @@ export const ENTITY_TABLES = [
   'automationSettings',
   'phases',
   'dayProgress',
-  'waterLogs',
 ] as const;

@@ -1,8 +1,5 @@
-import { appNow } from '../demo/appClock';
 /**
- * Morning-only: "Did you eat?" (breakfast is part of the morning routine).
- * Window is before leave-home on weekdays (05:00–07:00) so it never asks
- * after you are already on the bus / at college.
+ * After ~07:30: "Did you eat?"
  * No → pick time → in-app alert at that time → 30 min break → free time.
  */
 import { useCallback, useEffect, useState } from 'react';
@@ -43,7 +40,7 @@ export function MealPrompt({ date = new Date() }: { date?: Date }) {
   useEffect(() => {
     void (async () => {
       const s = await getMealGate(iso);
-      if (shouldAlertEat(appNow(), s)) {
+      if (shouldAlertEat(new Date(), s)) {
         try {
           if ('Notification' in window && Notification.permission === 'granted') {
             new Notification('Time to eat', { body: `You said ${s.eatAtHm}` });
@@ -64,7 +61,7 @@ export function MealPrompt({ date = new Date() }: { date?: Date }) {
 
   if (!state) return null;
 
-  const now = appNow();
+  const now = new Date();
   const ask = shouldAskMeal(now, state);
   const free = isFreeTimeUnlocked(now, state);
 
@@ -150,9 +147,9 @@ export function MealPrompt({ date = new Date() }: { date?: Date }) {
 
   return (
     <Card style={{ marginBottom: 12 }}>
-      <strong>Did you eat? (morning)</strong>
+      <strong>Did you eat?</strong>
       <p style={{ margin: '6px 0 12px', fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
-        Breakfast is part of your morning routine — before you leave. Weekdays 5–7am; Sunday 7–10am. This will not ask after you leave home.
+        Sunday asks from 7:30; other days from 8:00 (after wash). Change time if you need.
       </p>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
         <Button variant="primary" onClick={markAte}>

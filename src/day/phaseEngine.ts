@@ -9,17 +9,11 @@ import {
   completionRecordsRepo,
   dayAssignmentsRepo,
   dayProfilesRepo,
+  collegeDayStatusesRepo,
 } from '../data/repository';
 import type { Phase, DayProgress, Routine, CompletionRecord, DayProfile } from '../data/types';
 import { toIsoDate, isRoutineScheduledOnDate, sortRoutines } from '../routine/engine';
-import { effectiveDayStatus, statusSkipsCollege, CODING_SKIPPED_TAGS } from './spendPrompts';
-import {
-  phaseDayPart,
-  toMin,
-  isEveningCategory,
-  MORNING_END_MIN,
-  EVENING_START_MIN,
-} from './timeline';
+import { getRanges, rangeCovers, getSundayDefault } from './dayTypes';
 
 /** True for free-time / spin style phases that don't need routine rows. */
 export function isActionPhase(phase: Phase): boolean {
@@ -28,42 +22,20 @@ export function isActionPhase(phase: Phase): boolean {
   return n.includes('spin') || n.includes('free time') || n.includes('free-time');
 }
 
-/**
- * Routines that belong to a phase on a given date.
- *
- * Category matching alone put night routines (Bath 20:45, Night hair & face
- * 21:00 — both "Hygiene") into the Morning phase, so the morning could not
- * finish until they were ticked. Time of day now decides:
- * - Morning: category matches only count when planned before 12:00 (or untimed).
- * - Evening: also takes Hygiene/Meals routines planned at/after 17:00.
- */
+/** Routines that belong to a phase on a given date. */
 export function routinesForPhase(
   phase: Phase,
   allRoutines: Routine[],
   date: Date
 ): Routine[] {
   const scheduled = allRoutines.filter((r) => isRoutineScheduledOnDate(r, date));
-  const part = phaseDayPart(phase);
   return sortRoutines(
     scheduled.filter((r) => {
       if (phase.moduleTags.length > 0 && r.moduleTag) {
         if (phase.moduleTags.includes(r.moduleTag)) return true;
       }
-      const min = toMin(r.time);
       if (phase.categories.length > 0 && r.category) {
-        if (phase.categories.includes(r.category)) {
-          if (part === 'morning' && min != null && min >= MORNING_END_MIN) return false;
-          return true;
-        }
-      }
-      if (
-        part === 'evening' &&
-        !r.moduleTag &&
-        min != null &&
-        min >= EVENING_START_MIN &&
-        isEveningCategory(r.category)
-      ) {
-        return true;
+        if (phase.categories.includes(r.category)) return true;
       }
       return false;
     })
@@ -93,90 +65,93 @@ export function isPhaseComplete(
 
 /**
  * Active DayProfile for a calendar date.
- * Order: explicit DayAssignment → Sunday auto → normal (null).
- * College bunk / left-early is NEVER converted into a Day Type profile.
- * Free-time is derived from CollegeDayStatus + fixed routines by the spin budget engine.
+ * Order: Deep Work range > explicit assignment > Coimbatore Stay range >
+ * bunk college status > Sunday (only if "Sunday default" is turned on).
  */
 export async function resolveProfileForDate(date: Date): Promise<DayProfile | null> {
   const iso = toIsoDate(date);
   const dayIndex = date.getDay();
-  const [profiles, assignments] = await Promise.all([
+  const [profiles, assignments, collegeDays, deepRanges, stayRanges, sundayOn] = await Promise.all([
     dayProfilesRepo.list(),
     dayAssignmentsRepo.list(),
+    collegeDayStatusesRepo.list(),
+    getRanges('deep_work'),
+    getRanges('coimbatore_stay'),
+    getSundayDefault(),
   ]);
   const list = profiles.filter((p) => !p.deleted && p.enabled);
+
+  // 1) Deep Work overrides everything, even a Recharge Day.
+  if (rangeCovers(deepRanges, iso)) {
+    const dw = list.find((p) => p.systemKey === 'deep_work');
+    if (dw) return dw;
+  }
+
+  // 2) Explicit assignment for the date.
   const assign = assignments.find((a) => a.date === iso && !a.deleted);
   if (assign) {
     return list.find((p) => p.id === assign.profileId) ?? null;
   }
-  // Do NOT map college.status === 'bunked' → Bunk profile.
-  if (dayIndex === 0) {
+
+  // 3) Coimbatore Stay range (multi-day).
+  if (rangeCovers(stayRanges, iso)) {
+    const cs = list.find((p) => p.systemKey === 'coimbatore_stay');
+    if (cs) return cs;
+  }
+
+  // 4) Bunked college status.
+  const college = collegeDays.find((d) => d.date === iso && !d.deleted);
+  if (college?.status === 'bunked') {
+    return list.find((p) => p.systemKey === 'bunk') ?? null;
+  }
+
+  // 5) Sunday is NOT assumed special unless the user turns it on.
+  if (dayIndex === 0 && sundayOn) {
     return list.find((p) => p.systemKey === 'sunday') ?? null;
   }
   return null;
-}
-
-/**
- * Canonical day status for a date — set anytime via the PeriodBoard status
- * switcher (same-day) or TomorrowOrderCard (night-before). This is the
- * single source of truth for whether college phases run today; it is read
- * independently of the DayProfile/DayAssignment system below, which still
- * covers unrelated day types (rest, holiday, hackathon, exam, …).
- */
-export async function resolveDayStatus(iso: string) {
-  return effectiveDayStatus(iso);
 }
 
 /** Ordered list of phases that apply on this date. */
 export async function resolvePhasesForDate(date: Date): Promise<Phase[]> {
   const all = (await phasesRepo.list()).filter((p) => p.enabled && !p.deleted);
   const dayIndex = date.getDay();
-  const iso = toIsoDate(date);
   const sorted = [...all].sort((a, b) => a.order - b.order);
   const profile = await resolveProfileForDate(date);
   const effects = profile?.effects;
-  // Legacy bunk profiles (if any still enabled) are treated like rest for module filtering only.
-  const isLegacyBunkProfile = profile?.systemKey === 'bunk';
-  const isRest =
-    profile?.systemKey === 'rest' ||
-    profile?.systemKey === 'holiday' ||
-    profile?.systemKey === 'stay_out' ||
-    profile?.systemKey === 'family_function';
-  const forceSpinDay = isLegacyBunkProfile || profile?.systemKey === 'rest';
-
-  // Unified day status (leave / bunk / didnt_go / coimbatore_stay) also skips
-  // the College phase, independent of which DayProfile (if any) is active.
-  // NOTE: coimbatore_stay does not yet swap in an "away from home" variant
-  // of Evening/Sleep — there's no separate phase content for that yet, so
-  // it currently just skips College like the others.
-  const dayStatus = await resolveDayStatus(iso);
-  const statusSkipsCollegePhase = statusSkipsCollege(dayStatus);
-  const isCoding = dayStatus === 'coding';
+  const isBunk = profile?.systemKey === 'bunk';
+  const isRest = profile?.systemKey === 'rest' || profile?.systemKey === 'holiday' || profile?.systemKey === 'stay_out';
+  const isDeepWork = profile?.systemKey === 'deep_work';
+  const forceSpinDay = (isBunk || isRest) && !isDeepWork;
 
   const routines = await routinesRepo.list();
+  const isoForPhases = toIsoDate(date);
+  const collegeDaysForDate = (await collegeDayStatusesRepo.list()).filter((d) => d.date === isoForPhases);
   const applicable: Phase[] = [];
   for (const phase of sorted) {
-    // Profile can disable whole modules
+    // Profile can disable whole modules (e.g. college on bunk day)
     if (effects?.disableModuleTags?.length && phase.moduleTags?.length) {
       if (phase.moduleTags.some((t) => effects.disableModuleTags.includes(t))) {
         continue;
       }
     }
-    // Rest/holiday/family function: skip college phase structure when appropriate
-    if (isRest && !isLegacyBunkProfile && phase.moduleTags?.includes('college')) {
-      continue;
-    }
-    if (statusSkipsCollegePhase && phase.moduleTags?.includes('college')) {
-      continue;
-    }
-    // Coding day: everything else stays, but no activities (guitar/workout/spin wheel).
-    if (isCoding && phase.moduleTags?.some((t) => CODING_SKIPPED_TAGS.includes(t))) {
+    // Rest/holiday: skip college. Bunk keeps college day structure (resume after free time).
+    if (isRest && !isBunk && phase.moduleTags?.includes('college')) {
       continue;
     }
 
+    // A weekend day you actually attend college is not a free/spin day.
+    if (isActionPhase(phase) && !isBunk && !isRest) {
+      const st = collegeDaysForDate.find((d) => !d.deleted)?.status;
+      if (st === 'attended') continue;
+    }
+
+    // Deep Work Day: no spin / free-time phase at all.
+    if (isDeepWork && isActionPhase(phase)) continue;
+
     const onActiveDay =
       phase.activeDays.length === 0 || phase.activeDays.includes(dayIndex);
-    // Rest-style profiles may surface Spin phase on weekdays
+    // Bunk day forces Spin phase even on weekdays
     const forceSpin = forceSpinDay && isActionPhase(phase);
 
     if (!onActiveDay && !forceSpin) {

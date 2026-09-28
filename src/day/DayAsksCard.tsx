@@ -24,54 +24,20 @@ import {
   type DayAsksState,
 } from './dayAsks';
 import { notify, getWellnessDay, setWellnessDay } from './wellness';
-import { appNow } from '../demo/appClock';
-import { getTomorrowOrder, getWakeTimeMinutes } from './spendPrompts';
 
-function addDaysIso(iso: string, days: number): string {
-  const d = new Date(iso + 'T12:00:00');
-  d.setDate(d.getDate() + days);
-  return toIsoDate(d);
-}
-
-/** Client-side only extras injected into the night checklist — never in DEFAULT_ASKS. */
-const COIMBATORE_NIGHT_EXTRAS: AskItem[] = [
-  { id: 'n_pack_clothes', label: 'Pack extra clothes', enabled: true },
-  { id: 'n_pack_kit', label: 'Pack face/hair travel kit', enabled: true },
-];
-
-export function DayAsksCard({
-  date = new Date(),
-  /** When set, only this slot is shown — no Morning/Leave/Night tab switcher. */
-  forceSlot,
-  /** Fires once when every item in the active slot is done. */
-  onAllDone,
-}: {
-  date?: Date;
-  forceSlot?: AskSlot;
-  onAllDone?: () => void;
-}) {
+export function DayAsksCard({ date = new Date() }: { date?: Date }) {
   const iso = toIsoDate(date);
   const [state, setState] = useState<DayAsksState | null>(null);
-  const [slot, setSlot] = useState<AskSlot>(() => forceSlot ?? suggestedSlot(date));
+  const [slot, setSlot] = useState<AskSlot>(() => suggestedSlot(date));
   const [items, setItems] = useState<AskItem[]>([]);
   const [customIds, setCustomIds] = useState<Set<string>>(new Set());
   const [newLabel, setNewLabel] = useState('');
   const [adding, setAdding] = useState(false);
   const [showDone, setShowDone] = useState(false);
-  const [morningStartMin, setMorningStartMin] = useState(5 * 60);
 
   const reload = useCallback(async () => {
     setState(await getDayAsks(iso));
-    setMorningStartMin(await getWakeTimeMinutes(iso));
-
-    let list = await itemsForSlot(slot);
-    if (slot === 'night') {
-      const tomorrowIso = addDaysIso(iso, 1);
-      const tomorrow = await getTomorrowOrder(tomorrowIso);
-      if (tomorrow?.order === 'coimbatore_stay') {
-        list = [...list, ...COIMBATORE_NIGHT_EXTRAS];
-      }
-    }
+    const list = await itemsForSlot(slot);
     setItems(list);
     const custom = await getCustomAsks();
     setCustomIds(new Set(custom[slot].map((i) => i.id)));
@@ -82,19 +48,17 @@ export function DayAsksCard({
   }, [reload]);
 
   useEffect(() => {
-    setSlot(forceSlot ?? suggestedSlot(date));
-  }, [date, forceSlot]);
+    setSlot(suggestedSlot(date));
+  }, [date]);
 
   // Morning notification once per day when morning window opens
   useEffect(() => {
     void (async () => {
-      const now = appNow();
-      const wakeMin = await getWakeTimeMinutes(iso);
-      if (!isSlotActive('morning', now, wakeMin)) return;
+      const now = new Date();
+      if (!isSlotActive('morning', now)) return;
       const s = await getWellnessDay(iso);
       if (s.notified?.morningAsks) return;
-      const asksState = await getDayAsks(iso);
-      const pending = (await itemsForSlot('morning')).filter((i) => !asksState.done[i.id]);
+      const pending = (await itemsForSlot('morning')).filter((i) => !((await getDayAsks(iso)).done[i.id]));
       if (pending.length === 0) return;
       await notify('Morning check', `${pending.length} things — Yes/No on Day Brief`);
       await setWellnessDay({
@@ -106,31 +70,14 @@ export function DayAsksCard({
   }, [iso]);
 
   const dismissed = state?.dismissed?.[slot];
-  const slotActive = isSlotActive(slot, appNow(), morningStartMin);
+  const slotActive = isSlotActive(slot, new Date());
   const pending = slotActive || slot !== 'night'
     ? items.filter((i) => !state?.done[i.id])
     : [];
   const doneItems = items.filter((i) => state?.done[i.id]);
   const doneCount = doneItems.length;
 
-  useEffect(() => {
-    if (!state || !onAllDone) return;
-    if (pending.length === 0 && doneCount > 0 && items.length > 0) {
-      onAllDone();
-    }
-  }, [state, pending.length, doneCount, items.length, onAllDone]);
-
   if (!state) return null;
-
-  // Fully done for this slot → vanish completely (no empty card)
-  if (
-    !dismissed &&
-    pending.length === 0 &&
-    (doneCount > 0 || items.length === 0) &&
-    !showDone
-  ) {
-    return null;
-  }
 
   if (dismissed) {
     return (
@@ -171,24 +118,22 @@ export function DayAsksCard({
 
   return (
     <Card style={{ marginBottom: 12 }}>
-      {!forceSlot && (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-          {(['morning', 'leave', 'night'] as AskSlot[]).map((s) => {
-            const active = isSlotActive(s, appNow(), morningStartMin);
-            return (
-              <Button
-                key={s}
-                variant={slot === s ? 'primary' : 'ghost'}
-                onClick={() => setSlot(s)}
-                disabled={!active && s === 'night'}
-              >
-                {s === 'morning' ? 'Morning' : s === 'leave' ? 'Leave / college' : 'Night'}
-                {!active && s === 'night' ? ' (later)' : ''}
-              </Button>
-            );
-          })}
-        </div>
-      )}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+        {(['morning', 'leave', 'night'] as AskSlot[]).map((s) => {
+          const active = isSlotActive(s, new Date());
+          return (
+            <Button
+              key={s}
+              variant={slot === s ? 'primary' : 'ghost'}
+              onClick={() => setSlot(s)}
+              disabled={!active && s === 'night'}
+            >
+              {s === 'morning' ? 'Morning' : s === 'leave' ? 'Leave / college' : 'Night'}
+              {!active && s === 'night' ? ' (later)' : ''}
+            </Button>
+          );
+        })}
+      </div>
 
       <strong>{slotTitle(slot)}</strong>
       <p
@@ -200,7 +145,7 @@ export function DayAsksCard({
       >
         {slotHint(slot)} · Yes removes the item · {doneCount}/{items.length} done
       </p>
-      {!isSlotActive(slot, appNow(), morningStartMin) && slot === 'night' && (
+      {!isSlotActive(slot, new Date()) && slot === 'night' && (
         <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
           Night checklist unlocks after 8:00 PM.
         </p>

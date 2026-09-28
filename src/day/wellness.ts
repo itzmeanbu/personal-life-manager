@@ -81,34 +81,6 @@ export async function addWater(dateIso: string, n = 1): Promise<WellnessDayState
     waterCount: Math.max(0, s.waterCount + n),
   };
   await setWellnessDay(next);
-
-  // Mirror into waterLogs for the deterministic water engine (progress + schedule).
-  try {
-    const { waterLogsRepo } = await import('../data/repository');
-    const cfg = await getWellnessConfig();
-    if (n > 0) {
-      for (let i = 0; i < n; i++) {
-        await waterLogsRepo.create({
-          date: dateIso,
-          amountMl: cfg.mlPerGlass,
-          loggedAt: new Date().toISOString(),
-          source: 'quick',
-        });
-      }
-    } else if (n < 0) {
-      // Soft undo: remove last log(s) for this date
-      const rows = (await waterLogsRepo.list())
-        .filter((l) => !l.deleted && l.date === dateIso)
-        .sort((a, b) => (a.loggedAt < b.loggedAt ? 1 : -1));
-      const remove = Math.min(Math.abs(n), rows.length);
-      for (let i = 0; i < remove; i++) {
-        await waterLogsRepo.remove(rows[i].id);
-      }
-    }
-  } catch {
-    /* water logs optional if DB not ready */
-  }
-
   return next;
 }
 

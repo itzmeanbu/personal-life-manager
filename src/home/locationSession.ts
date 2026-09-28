@@ -11,6 +11,7 @@ import { getHomeConfig } from './settings';
 import {
   isMonitorRunning,
   startHomeMonitor,
+  stopHomeMonitor,
   setSessionOnEnterHome,
 } from './monitor';
 import type { HomeArrivalConfig } from './types';
@@ -84,7 +85,8 @@ export function isInArrivalWindow(
  * Start app location tracking (monitor). Does not toggle OS Location switch.
  */
 export async function turnLocationTrackingOn(
-  dateIso: string
+  dateIso: string,
+  reason: 'near_home' | 'eta' | 'manual'
 ): Promise<LocationSessionState> {
   const config = await getHomeConfig();
   if (!config.home) {
@@ -161,7 +163,7 @@ export async function setEta(
     prompted: true,
   };
   await setLocationSession(next);
-  return turnLocationTrackingOn(dateIso);
+  return turnLocationTrackingOn(dateIso, 'eta');
 }
 
 /** Manual "I'm home" without GPS. */

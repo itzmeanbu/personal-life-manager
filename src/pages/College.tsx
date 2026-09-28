@@ -94,28 +94,20 @@ export default function College() {
     async (status: CollegeDayStatus['status'], homeArrivalTime?: string) => {
       setBusy(true);
       try {
-        const needsArrival = status === 'bunked' || status === 'left_early';
-        const patch = {
-          status,
-          homeArrivalTime: needsArrival ? homeArrivalTime : undefined,
-          leftEarlyTime: status === 'left_early' ? homeArrivalTime : undefined,
-        };
         if (todayStatus) {
-          await collegeDayStatusesRepo.update(todayStatus.id, patch);
+          await collegeDayStatusesRepo.update(todayStatus.id, {
+            status,
+            homeArrivalTime: status === 'bunked' ? homeArrivalTime : undefined,
+          });
         } else {
           await collegeDayStatusesRepo.create({
             date: todayIso,
-            ...patch,
+            status,
+            homeArrivalTime: status === 'bunked' ? homeArrivalTime : undefined,
           });
         }
 
-        // Log activity category for attended / full bunk only (left_early stays "attended" path)
-        const sysKey =
-          status === 'attended' || status === 'left_early'
-            ? 'attended'
-            : status === 'bunked'
-              ? 'bunked'
-              : null;
+        const sysKey = status === 'attended' ? 'attended' : status === 'bunked' ? 'bunked' : null;
         if (sysKey && categories) {
           const cat = categories.find((c) => c.systemKey === sysKey && !c.deleted);
           if (cat) {
@@ -255,22 +247,14 @@ export default function College() {
               🎓 Attended
             </Button>
             <Button
-              variant={status === 'left_early' ? 'primary' : 'secondary'}
-              disabled={busy}
-              onClick={() => {
-                setDayStatus('left_early', bunkTimes[0] ?? '16:30');
-              }}
-            >
-              🚪 Left early
-            </Button>
-            <Button
               variant={status === 'bunked' ? 'primary' : 'secondary'}
               disabled={busy}
               onClick={() => {
+                if (status === 'bunked') return;
                 setDayStatus('bunked', bunkTimes[0] ?? '16:30');
               }}
             >
-              🏃 Bunked
+              🏃 Bunked today
             </Button>
             {status !== 'none' && (
               <Button variant="ghost" disabled={busy} onClick={() => setDayStatus('none')}>
@@ -279,11 +263,12 @@ export default function College() {
             )}
           </div>
 
-          {(status === 'bunked' || status === 'left_early') && (
+          {status === 'bunked' && (
             <div className="college-bunk-panel">
               <p className="college-hint">
-                Morning routines stay normal. Pick when free time starts (home / leave campus):
+                Normal day: college → bus → home around {formatArrivalTime(normalHome)}.
               </p>
+              <p className="college-hint">Pick early home arrival (afternoon activities unlock):</p>
               <div className="college-time-chips">
                 {bunkTimes.map((t) => (
                   <button
@@ -291,7 +276,7 @@ export default function College() {
                     type="button"
                     className={`college-chip ${todayStatus?.homeArrivalTime === t ? 'college-chip--active' : ''}`}
                     disabled={busy}
-                    onClick={() => setDayStatus(status === 'left_early' ? 'left_early' : 'bunked', t)}
+                    onClick={() => setDayStatus('bunked', t)}
                   >
                     {formatArrivalTime(t)}
                   </button>
@@ -299,9 +284,8 @@ export default function College() {
               </div>
               {todayStatus?.homeArrivalTime && (
                 <p className="college-arrival-note">
-                  Free time from <strong>{formatArrivalTime(todayStatus.homeArrivalTime)}</strong>{' '}
-                  until your next fixed routine (~{formatArrivalTime(normalHome)}).
-                  Spin will open automatically when the window is active.
+                  Home around <strong>{formatArrivalTime(todayStatus.homeArrivalTime)}</strong> —
+                  afternoon / evening free for skill work, coding, games, social, etc.
                 </p>
               )}
             </div>
@@ -309,8 +293,7 @@ export default function College() {
 
           {status === 'attended' && (
             <p className="college-arrival-note">
-              Full day: home around {formatArrivalTime(normalHome)}. You can switch to Left early
-              later if you leave campus early.
+              Normal schedule: home around {formatArrivalTime(normalHome)}.
             </p>
           )}
         </Card>

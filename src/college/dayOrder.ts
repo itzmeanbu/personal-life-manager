@@ -1,24 +1,15 @@
 /**
  * College day-order (1–6) per date.
- *
- * Day order ALWAYS advances with the calendar sequence —
- * leave / bunk does NOT freeze it.
- *
- * Example:
- *   Mon → Order 1
- *   Tue → Order 2
- *   Wed leave → still Order 3
- *   Thu → Order 4
- *
- * Cycle: 1 → 2 → 3 → 4 → 5 → 6 → 1 …
+ * First time you set it → later days auto-advance 1→2→…→6→1
+ * until you manually change.
  */
-
 import { getSetting, setSetting } from '../data/settings';
 
 const KEY = 'college.dayOrderByDate.v1';
+/** Last explicitly chosen order — used to chain future days. */
 const LAST_KEY = 'college.dayOrder.lastChosen.v1';
 
-export type DayOrderMap = Record<string, number>;
+export type DayOrderMap = Record<string, number>; // iso date → 1..6
 
 export async function getDayOrderMap(): Promise<DayOrderMap> {
   return (await getSetting<DayOrderMap | null>(KEY, null)) ?? {};
@@ -35,7 +26,7 @@ export async function setDayOrderForDate(iso: string, order: number): Promise<vo
 /**
  * Resolve day order for a date:
  * 1) exact saved value
- * 2) else +1 per calendar day from most recent earlier date (leave still counts)
+ * 2) else auto from previous saved day (cycle +1)
  * 3) else null (user must pick once)
  */
 export async function getDayOrderForDate(iso: string): Promise<number | null> {
@@ -43,104 +34,46 @@ export async function getDayOrderForDate(iso: string): Promise<number | null> {
   const n = map[iso];
   if (n >= 1 && n <= 6) return n;
 
-  // Day order is for COLLEGE days only — not Sat/Sun rest/outing by default
-  const dow = new Date(iso + 'T12:00:00').getDay();
-  if (dow === 0 || dow === 6) {
-    return null;
-  }
-
+  // Auto-chain from most recent earlier date
   const earlier = Object.keys(map)
     .filter((d) => d < iso)
     .sort();
-  if (earlier.length === 0) {
-    const saved = await getSetting<{ order: number; date?: string } | null>(LAST_KEY, null);
-    const savedOrder = saved?.order;
-    const savedDate = saved?.date;
-    if (
-      savedOrder != null &&
-      savedOrder >= 1 &&
-      savedOrder <= 6 &&
-      savedDate != null &&
-      savedDate < iso
-    ) {
-      const last = new Date(savedDate + 'T12:00:00');
-      const cur = new Date(iso + 'T12:00:00');
-      const diffDays = Math.round((cur.getTime() - last.getTime()) / 86400000);
-      if (diffDays >= 1) {
-        let next = savedOrder;
-        const cursor = new Date(savedDate + 'T12:00:00');
-        for (let i = 0; i < diffDays; i++) {
-          cursor.setDate(cursor.getDate() + 1);
-          const d = cursor.getDay();
-          if (d === 0 || d === 6) continue;
-          next = next >= 6 ? 1 : next + 1;
-        }
-        map[iso] = next;
-        await setSetting(KEY, map);
-        return next;
-      }
-    }
-    return null;
-  }
+  if (earlier.length === 0) return null;
 
-  const lastDate = earlier[earlier.length - 1]!;
-  const lastOrder = map[lastDate]!;
+  const lastDate = earlier[earlier.length - 1];
+  const lastOrder = map[lastDate];
   if (!(lastOrder >= 1 && lastOrder <= 6)) return null;
 
+  // How many calendar days after lastDate?
   const last = new Date(lastDate + 'T12:00:00');
   const cur = new Date(iso + 'T12:00:00');
   const diffDays = Math.round((cur.getTime() - last.getTime()) / 86400000);
   if (diffDays < 1) return lastOrder;
 
-  // +1 per weekday only (Sat/Sun do not consume day-order slots)
+  // Advance one step per day (skip weekends optional later — for now every day)
   let next = lastOrder;
-  const cursor = new Date(lastDate + 'T12:00:00');
   for (let i = 0; i < diffDays; i++) {
-    cursor.setDate(cursor.getDate() + 1);
-    const d = cursor.getDay();
-    if (d === 0 || d === 6) continue; // weekend — not a college day-order day
     next = next >= 6 ? 1 : next + 1;
   }
 
+  // Persist so it stays stable for the day
   map[iso] = next;
   await setSetting(KEY, map);
   return next;
 }
 
-export async function markDayOrderUsed(iso: string, order: number): Promise<void> {
-  if (order < 1 || order > 6) return;
-  await setDayOrderForDate(iso, order);
-}
-
+/** Suggest next day order (cycles 1→2→…→6→1) from last known. */
 export async function suggestNextDayOrder(fromIso: string): Promise<number> {
   const map = await getDayOrderMap();
   const dates = Object.keys(map).sort();
   const last = dates.filter((d) => d <= fromIso).pop();
   if (!last) {
     const saved = await getSetting<{ order: number } | null>(LAST_KEY, null);
-    const lastOrder = saved?.order;
-    if (lastOrder != null && lastOrder >= 1 && lastOrder <= 6) {
-      return lastOrder >= 6 ? 1 : lastOrder + 1;
+    if (saved?.order >= 1 && saved.order <= 6) {
+      return saved.order >= 6 ? 1 : saved.order + 1;
     }
     return 1;
   }
-  const prev = map[last]!;
+  const prev = map[last];
   return prev >= 6 ? 1 : prev + 1;
-}
-
-export async function ensureOrderForPlannedCollege(iso: string): Promise<number> {
-  const existing = (await getDayOrderMap())[iso];
-  if (existing >= 1 && existing <= 6) return existing;
-  const resolved = await getDayOrderForDate(iso);
-  if (resolved != null) return resolved;
-  const next = await suggestNextDayOrder(iso);
-  await setDayOrderForDate(iso, next);
-  return next;
-}
-
-/** No-op: leave must keep day order. */
-export async function clearDayOrderForDate(_iso: string): Promise<void> {}
-
-export async function dayConsumesOrder(_iso: string): Promise<boolean> {
-  return true;
 }

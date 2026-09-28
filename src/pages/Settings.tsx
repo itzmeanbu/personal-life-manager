@@ -20,6 +20,7 @@ import './settings-control.css';
 
 /** Module control links — private config hub, not an admin CMS. */
 const MODULE_LINKS: { label: string; path: string; hint: string }[] = [
+  { label: '🗓️ Day Brief settings', path: '/day-brief-settings', hint: 'Day types, wake coach, bus music, greetings, notifications' },
   { label: 'Easy setup', path: '/easy-setup', hint: 'One question at a time — your whole lifestyle' },
   { label: 'Quick day setup', path: '/quick-day', hint: 'Wake up at 9? One tap' },
   { label: 'Weekly Schedule', path: '/weekly-schedule', hint: 'Which modules run on which days' },
@@ -38,7 +39,6 @@ const MODULE_LINKS: { label: string; path: string; hint: string }[] = [
   { label: 'Music', path: '/music', hint: 'Playlists & offline MP3' },
   { label: 'Development', path: '/development', hint: 'Personal records & photos' },
   { label: 'Bucket List', path: '/bucket-list', hint: 'Goals & status' },
-  { label: 'Notifications', path: '/notifications', hint: 'Times for water, sunscreen, spend, night — add/delete' },
   { label: 'Home arrival', path: '/home-arrival', hint: 'Geofence & late rule' },
   { label: 'Gamification', path: '/progress', hint: 'XP, streaks, achievements' },
   { label: '🎨 Appearance', path: '/appearance', hint: 'Logo, backgrounds, theme' },

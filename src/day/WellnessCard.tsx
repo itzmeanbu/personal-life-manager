@@ -80,14 +80,9 @@ export function WellnessCard({ date = new Date() }: { date?: Date }) {
   const showLip =
     config.lipBalmEnabled && !state.lipBalmDone && now.getHours() >= 8 && now.getHours() < 22;
 
-  const goalMl = config.waterGoal * config.mlPerGlass;
-  const consumedMl = state.waterCount * config.mlPerGlass;
-  const remainingMl = Math.max(0, goalMl - consumedMl);
-  const progress = goalMl > 0 ? Math.min(1, consumedMl / goalMl) : 0;
-
   return (
     <Card style={{ marginBottom: 12 }}>
-      <strong>💧 Water & wellness</strong>
+      <strong>💧 Wellness</strong>
 
       <div style={{ marginTop: 10 }}>
         <div
@@ -100,10 +95,10 @@ export function WellnessCard({ date = new Date() }: { date?: Date }) {
           }}
         >
           <span style={{ fontSize: 'var(--text-sm)' }}>
-            {consumedMl} / {goalMl} ml
+            Water · {state.waterCount}/{config.waterGoal} glasses
             <span style={{ color: 'var(--color-text-secondary)' }}>
               {' '}
-              · {state.waterCount}/{config.waterGoal} · {remainingMl} ml left
+              (~{state.waterCount * config.mlPerGlass} ml)
             </span>
           </span>
           <div style={{ display: 'flex', gap: 6 }}>
@@ -111,7 +106,7 @@ export function WellnessCard({ date = new Date() }: { date?: Date }) {
               variant="primary"
               onClick={async () => setState(await addWater(iso, 1))}
             >
-              +{config.mlPerGlass} ml
+              +1 glass
             </Button>
             {state.waterCount > 0 && (
               <Button
@@ -122,25 +117,6 @@ export function WellnessCard({ date = new Date() }: { date?: Date }) {
               </Button>
             )}
           </div>
-        </div>
-        <div
-          style={{
-            marginTop: 8,
-            height: 8,
-            borderRadius: 4,
-            background: 'var(--color-border)',
-            overflow: 'hidden',
-          }}
-        >
-          <div
-            style={{
-              height: '100%',
-              width: `${Math.round(progress * 100)}%`,
-              background: 'var(--color-accent, #3b82f6)',
-              borderRadius: 4,
-              transition: 'width 0.2s ease',
-            }}
-          />
         </div>
 
         {!editingGoal ? (

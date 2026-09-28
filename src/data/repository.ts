@@ -127,7 +127,6 @@ import type {
   AutomationSetting,
   Phase,
   DayProgress,
-  WaterLog,
 } from './types';
 
 export const routinesRepo = new Repository<Routine>('routines');
@@ -170,7 +169,6 @@ export const dayAssignmentsRepo = new Repository<DayAssignment>('dayAssignments'
 export const appSettingsRepo = new Repository<AppSetting>('appSettings');
 export const phasesRepo = new Repository<Phase>('phases');
 export const dayProgressRepo = new Repository<DayProgress>('dayProgress');
-export const waterLogsRepo = new Repository<WaterLog>('waterLogs');
 export const featureTogglesRepo = new Repository<FeatureToggle>('featureToggles');
 export const automationSettingsRepo = new Repository<AutomationSetting>('automationSettings');
 

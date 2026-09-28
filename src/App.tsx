@@ -7,24 +7,22 @@ import { SecurityProvider, useSecurity } from './security/SecurityProvider';
 import { LockScreen } from './components/security/LockScreen';
 import { ensureDefaultRoutinesSeeded } from './routine/seed';
 import { seedCollegeCategoriesIfNeeded } from './college/defaults';
-import {
-  seedDayProfilesIfNeeded,
-  disableLegacyBunkProfiles,
-  ensureFamilyFunctionProfile,
-} from './day/seed';
+import { seedDayProfilesIfNeeded } from './day/seed';
+import { ensureDayTypeProfiles } from './day/dayTypes';
+import { seedDayBriefMusicIfNeeded } from './music/dayBriefSeed';
+import { initNotifications } from './notifications/scheduler';
 import { seedWorkoutEngineIfNeeded } from './workout/seed';
 import { seedSpinWheelsIfNeeded } from './spin/seed';
 import { ensureWeeklyChoresOnSpin } from './spin/weeklyChores';
 import { seedEntertainmentCategoriesIfNeeded } from './entertainment/seed';
-import { seedMusicPlaylistsIfNeeded, ensureBusPlaylistsExist } from './music/seed';
+import { seedMusicPlaylistsIfNeeded } from './music/seed';
 import { seedBucketListIfNeeded } from './bucket/seed';
 import { seedAchievementsIfNeeded } from './gamification/seed';
-import { seedDefaultPhasesIfNeeded, ensureBusPhasesExist } from './day/phaseSeed';
+import { seedDefaultPhasesIfNeeded } from './day/phaseSeed';
 import { migrateWeekendJourney } from './day/migrateWeekend';
 import { cleanupDuplicateSeedData } from './data/dedupeSeeds';
 import { getAppearanceConfig } from './appearance/settings';
 import { HomeArrivalProvider } from './home/HomeArrivalProvider';
-import { NotificationProvider } from './notify/NotificationProvider';
 
 function AppRoutes() {
   return (
@@ -64,19 +62,15 @@ function App() {
     void Promise.all([
       ensureDefaultRoutinesSeeded(),
       seedCollegeCategoriesIfNeeded(),
-      seedDayProfilesIfNeeded().then(() =>
-        Promise.all([disableLegacyBunkProfiles(), ensureFamilyFunctionProfile()])
-      ),
+      seedDayProfilesIfNeeded().then(() => ensureDayTypeProfiles()),
       seedWorkoutEngineIfNeeded(),
       seedSpinWheelsIfNeeded().then(() => ensureWeeklyChoresOnSpin()),
       seedEntertainmentCategoriesIfNeeded(),
-      seedMusicPlaylistsIfNeeded().then(() => ensureBusPlaylistsExist()),
+      seedMusicPlaylistsIfNeeded().then(() => seedDayBriefMusicIfNeeded()),
       seedBucketListIfNeeded(),
       seedAchievementsIfNeeded(),
-      seedDefaultPhasesIfNeeded()
-        .then(() => migrateWeekendJourney())
-        .then(() => ensureBusPhasesExist()),
-    ]).then(() => cleanupDuplicateSeedData());
+      seedDefaultPhasesIfNeeded().then(() => migrateWeekendJourney()),
+    ]).then(() => cleanupDuplicateSeedData()).then(() => initNotifications());
     void getAppearanceConfig().then((c) => {
       if (c.accentColor) document.documentElement.style.setProperty('--color-accent', c.accentColor);
     });
@@ -85,9 +79,7 @@ function App() {
   return (
     <SecurityProvider>
       <HomeArrivalProvider>
-        <NotificationProvider>
-          <Gate />
-        </NotificationProvider>
+        <Gate />
       </HomeArrivalProvider>
     </SecurityProvider>
   );

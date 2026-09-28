@@ -7,39 +7,31 @@ import { Button } from '../components/ui/Button';
 import { toIsoDate } from '../routine/engine';
 import { formatHm12 } from '../lib/timeFormat';
 import {
+  TIME_SLOTS,
   currentTimeSlot,
   liveClassLine,
   scheduleForDayOrder,
   formatMinHm,
 } from '../college/timetable';
-import { checkPeriodTransition } from '../college/periodNotify';
-import { forceRebuildToday } from './migrateWeekend';
 import {
   getDayOrderForDate,
   setDayOrderForDate,
   suggestNextDayOrder,
 } from '../college/dayOrder';
-import {
-  effectiveDayStatus,
-  setDayStatus,
-  DAY_STATUS_OPTIONS,
-  type TomorrowDayOrder,
-} from './spendPrompts';
-import { collegeDayStatusesRepo, moneyTransactionsRepo } from '../data/repository';
-import { summarizeDay, formatInr } from '../money/stats';
-import { getMoneyConfig, DEFAULT_MONEY_CONFIG } from '../money/settings';
+import { getTomorrowOrder, type TomorrowDayOrder } from './spendPrompts';
+import { collegeDayStatusesRepo } from '../data/repository';
 import { useLiveQuery } from 'dexie-react-hooks';
 
 function modeLabel(
-  order: TomorrowDayOrder | 'attended' | 'bunked' | 'left_early' | 'none' | null
+  order: TomorrowDayOrder | 'attended' | 'bunked' | 'none' | null
 ): string {
-  if (order === 'college' || order === 'attended') return '🎓 College day';
-  if (order === 'bunk' || order === 'bunked') return '🏃 College: bunked';
-  if (order === 'didnt_go') return "🙈 College: didn't go";
-  if (order === 'left_early') return '🚪 College: left early';
-  if (order === 'coding') return '💻 Coding day — no guitar / workout / spin';
+  if (order === 'college' || order === 'attended') return '🎓 Campus Day';
+  if (order === 'bunk' || order === 'bunked') return '🏃 Early Exit Day';
+  if (order === 'event') return '🎉 Campus Event Day';
+  if (order === 'rest') return '🛋️ Recharge Day';
+  if (order === 'deep_work') return '💻 Deep Work Day';
   if (order === 'leave') return '🏠 Leave / holiday';
-  if (order === 'coimbatore_stay') return '🌆 Coimbatore stay';
+  if (order === 'coimbatore_stay') return '🌆 Coimbatore Stay';
   return 'Mode not set';
 }
 
@@ -52,7 +44,8 @@ export function PeriodBoard({ date = new Date() }: { date?: Date }) {
 
   const reload = useCallback(async () => {
     setDayOrder(await getDayOrderForDate(iso));
-    setFromNight(await effectiveDayStatus(iso));
+    const night = await getTomorrowOrder(iso);
+    setFromNight(night?.order ?? null);
   }, [iso]);
 
   useEffect(() => {
@@ -69,33 +62,28 @@ export function PeriodBoard({ date = new Date() }: { date?: Date }) {
     return rows.find((d) => d.date === iso && !d.deleted) ?? null;
   }, [iso]);
 
-  const moneyConfig = useLiveQuery(() => getMoneyConfig(), [], DEFAULT_MONEY_CONFIG);
-  const txs = useLiveQuery(() => moneyTransactionsRepo.list(), []);
-
   void tick;
   const slot = currentTimeSlot(new Date());
 
   const statusFromCollege =
     college?.status === 'bunked'
       ? 'bunked'
-      : college?.status === 'left_early'
-        ? 'left_early'
-        : college?.status === 'attended'
-          ? 'attended'
-          : null;
-  const mode: TomorrowDayOrder | 'attended' | 'bunked' | 'left_early' | 'none' | null =
+      : college?.status === 'attended'
+        ? 'attended'
+        : null;
+  const mode =
     fromNight && fromNight !== 'unset' ? fromNight : statusFromCollege;
 
-  const attending = mode === 'college' || mode === 'attended';
+  const isCollegeDay =
+    mode === 'college' ||
+    mode === 'attended' ||
+    mode === null ||
+    mode === 'unset' ||
+    (mode !== 'bunk' && mode !== 'bunked' && mode !== 'leave' && mode !== 'coimbatore_stay' &&
+      mode !== 'event' && mode !== 'rest' && mode !== 'deep_work');
 
-  // Full bunk skips timetable; left_early still shows morning periods as normal
   const showTimetable =
-    mode !== 'bunk' &&
-    mode !== 'bunked' &&
-    mode !== 'didnt_go' &&
-    mode !== 'coding' &&
-    mode !== 'leave' &&
-    mode !== 'coimbatore_stay';
+    isCollegeDay && mode !== 'bunk' && mode !== 'bunked' && mode !== 'leave';
 
   const pickOrder = async (n: number) => {
     await setDayOrderForDate(iso, n);
@@ -108,25 +96,7 @@ export function PeriodBoard({ date = new Date() }: { date?: Date }) {
     await pickOrder(n);
   };
 
-  const setStatus = async (order: TomorrowDayOrder) => {
-    await setDayStatus(iso, order);
-    await forceRebuildToday(date);
-    await reload();
-    window.dispatchEvent(new Event('day-status-changed'));
-  };
-
-  // Live period notifications — only while actually attending today.
-  useEffect(() => {
-    if (!attending || !dayOrder) return;
-    void checkPeriodTransition(dayOrder, new Date());
-  }, [attending, dayOrder, tick]);
-
   const schedule = dayOrder ? scheduleForDayOrder(dayOrder) : [];
-
-  const daySpend =
-    txs && moneyConfig
-      ? summarizeDay(txs, iso, moneyConfig.dailyBudget)
-      : null;
 
   return (
     <Card style={{ marginBottom: 12 }}>
@@ -137,40 +107,6 @@ export function PeriodBoard({ date = new Date() }: { date?: Date }) {
           <span style={{ color: 'var(--color-text-secondary)' }}> · set last night</span>
         )}
       </p>
-
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 6,
-          marginBottom: 10,
-        }}
-      >
-        {DAY_STATUS_OPTIONS.map((o) => (
-          <Button
-            key={o.id}
-            variant={fromNight === o.id ? 'primary' : 'secondary'}
-            onClick={() => setStatus(o.id)}
-          >
-            {o.emoji} {o.label}
-          </Button>
-        ))}
-      </div>
-
-      {slot && (slot.kind === 'break' || slot.kind === 'lunch') && daySpend && (
-        <p
-          style={{
-            margin: '0 0 10px',
-            fontSize: 'var(--text-sm)',
-            padding: '6px 10px',
-            borderRadius: 8,
-            background: 'var(--color-surface-2, var(--color-surface))',
-            border: '1px solid var(--color-border)',
-          }}
-        >
-          Spent today: <strong>{formatInr(daySpend.expensesMyShare, moneyConfig?.currencySymbol)}</strong>
-        </p>
-      )}
 
       {showTimetable && (
         <>
@@ -277,10 +213,10 @@ export function PeriodBoard({ date = new Date() }: { date?: Date }) {
         </>
       )}
 
-      {(mode === 'bunk' || mode === 'bunked' || mode === 'didnt_go') && (
+      {(mode === 'bunk' || mode === 'bunked') && (
         <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
-          {mode === 'didnt_go' ? "Didn't go" : 'Bunk day'} — timetable hidden. Same as a bunk day
-          for everything else; only the history label is different.
+          Bunk day — timetable hidden. You marked this when you left early / skipped college.
+          No new photo needed; just tap Bunk when it happens.
         </p>
       )}
     </Card>

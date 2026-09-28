@@ -35,11 +35,11 @@ const BucketList = lazy(() => import('../pages/BucketList'));
 const Settings = lazy(() => import('../pages/Settings'));
 const WeeklySchedule = lazy(() => import('../pages/settings/WeeklySchedule'));
 const QuickDay = lazy(() => import('../pages/settings/QuickDay'));
+const DayBriefSettings = lazy(() => import('../pages/settings/DayBriefSettings'));
 const LifestyleWizard = lazy(() => import('../pages/settings/LifestyleWizard'));
 const Appearance = lazy(() => import('../pages/Appearance'));
 const HomeAutomation = lazy(() => import('../pages/HomeAutomation'));
 const SpecialDays = lazy(() => import('../pages/SpecialDays'));
-const NotificationsPage = lazy(() => import('../pages/settings/NotificationsPage'));
 
 /**
  * Single source of truth for navigation: the Home grid, the Module Drawer,
@@ -68,9 +68,9 @@ export const MODULES: ModuleDef[] = [
   { id: 'home-arrival', label: 'Home arrival', path: '/home-arrival', emoji: '📍', monogram: 'HA', colorVar: '--mod-home', Component: HomeAutomation },
   { id: 'appearance', label: 'Appearance', path: '/appearance', emoji: '🎨', monogram: 'AP', colorVar: '--mod-settings', Component: Appearance },
   { id: 'weekly-schedule', label: 'Weekly Schedule', path: '/weekly-schedule', emoji: '📅', monogram: 'WS', colorVar: '--mod-settings', Component: WeeklySchedule },
+  { id: 'day-brief-settings', label: 'Day Brief settings', path: '/day-brief-settings', emoji: '🗓️', monogram: 'DB', colorVar: '--mod-settings', Component: DayBriefSettings },
   { id: 'quick-day', label: 'Quick day setup', path: '/quick-day', emoji: '⏰', monogram: 'QD', colorVar: '--mod-settings', Component: QuickDay },
   { id: 'easy-setup', label: 'Easy setup', path: '/easy-setup', emoji: '✨', monogram: 'ES', colorVar: '--mod-settings', Component: LifestyleWizard },
-  { id: 'notifications', label: 'Notifications', path: '/notifications', emoji: '🔔', monogram: 'NT', colorVar: '--mod-settings', Component: NotificationsPage },
   { id: 'settings', label: 'Settings', path: '/settings', emoji: '⚙️', monogram: '⚙', colorVar: '--mod-settings', Component: Settings },
 ];
 
