@@ -62,10 +62,9 @@ export function isPhaseComplete(
 }
 
 
-/** Active DayProfile for a calendar date (assignment > bunk college status > sunday). */
+/** Active DayProfile for a calendar date. Explicit assignment wins; Sunday is never assumed to be a rest day. */
 export async function resolveProfileForDate(date: Date): Promise<DayProfile | null> {
   const iso = toIsoDate(date);
-  const dayIndex = date.getDay();
   const [profiles, assignments, collegeDays] = await Promise.all([
     dayProfilesRepo.list(),
     dayAssignmentsRepo.list(),
@@ -80,22 +79,22 @@ export async function resolveProfileForDate(date: Date): Promise<DayProfile | nu
   if (college?.status === 'bunked') {
     return list.find((p) => p.systemKey === 'bunk') ?? null;
   }
-  if (dayIndex === 0) {
-    return list.find((p) => p.systemKey === 'sunday') ?? null;
-  }
   return null;
 }
 
 /** Ordered list of phases that apply on this date. */
 export async function resolvePhasesForDate(date: Date): Promise<Phase[]> {
-  const all = (await phasesRepo.list()).filter((p) => p.enabled && !p.deleted);
   const dayIndex = date.getDay();
+  const all = (await phasesRepo.list()).filter((p) => p.enabled && !p.deleted);
   const sorted = [...all].sort((a, b) => a.order - b.order);
   const profile = await resolveProfileForDate(date);
   const effects = profile?.effects;
   const isBunk = profile?.systemKey === 'bunk';
   const isRest = profile?.systemKey === 'rest' || profile?.systemKey === 'holiday' || profile?.systemKey === 'stay_out';
-  const forceSpinDay = isBunk || isRest;
+  const isEvent = profile?.systemKey === 'event';
+  const isCoding = profile?.systemKey === 'coding';
+  const isCoimbatore = profile?.systemKey === 'coimbatore_stay';
+  const forceSpinDay = isBunk || isRest || isEvent;
 
   const routines = await routinesRepo.list();
   const applicable: Phase[] = [];
@@ -106,14 +105,21 @@ export async function resolvePhasesForDate(date: Date): Promise<Phase[]> {
         continue;
       }
     }
-    // Rest/holiday: skip college. Bunk keeps college day structure (resume after free time).
+    // Rest/holiday: skip college. Bunk keeps college day structure.
     if (isRest && !isBunk && phase.moduleTags?.includes('college')) {
       continue;
     }
+    // Coding and Coimbatore stay never use the free-time spin phase.
+    if ((isCoding || isCoimbatore) && phase.moduleTags?.includes('spin')) {
+      continue;
+    }
+
+    // Spin is never a generic calendar-day phase. It appears only when this
+    // day type creates an explicit free-time window (bunk/rest/function).
+    if (isActionPhase(phase) && !forceSpinDay) continue;
 
     const onActiveDay =
       phase.activeDays.length === 0 || phase.activeDays.includes(dayIndex);
-    // Bunk day forces Spin phase even on weekdays
     const forceSpin = forceSpinDay && isActionPhase(phase);
 
     if (!onActiveDay && !forceSpin) {

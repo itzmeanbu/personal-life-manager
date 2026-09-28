@@ -19,7 +19,7 @@ const DAY_NAMES: DayName[] = [
   'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
 ];
 
-/** English + romanized Korean/Japanese + a bit of Spanish/French — all Latin script. */
+/** Exactly four greeting languages: English, Japanese, Korean, French. Other UI/notifications remain English. */
 const GREETINGS = {
   lateNight: ['Good morning', 'おはようございます', '좋은 아침이에요', 'Bonjour'],
   morning: ['Good morning', 'おはようございます', '좋은 아침이에요', 'Bonjour'],

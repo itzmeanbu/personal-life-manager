@@ -26,6 +26,9 @@ function modeLabel(
 ): string {
   if (order === 'college' || order === 'attended') return '🎓 College day';
   if (order === 'bunk' || order === 'bunked') return '🏃 Bunk day';
+  if (order === 'event') return '🎉 Campus Function Day';
+  if (order === 'rest') return '🛋️ Rest & Recharge Day';
+  if (order === 'coding') return '💻 Coding Focus Day';
   if (order === 'leave') return '🏠 Leave / holiday';
   if (order === 'coimbatore_stay') return '🌆 Coimbatore stay';
   return 'Mode not set';
@@ -71,7 +74,7 @@ export function PeriodBoard({ date = new Date() }: { date?: Date }) {
     fromNight && fromNight !== 'unset' ? fromNight : statusFromCollege;
 
   const showTimetable =
-    mode === null || mode === 'college' || mode === 'attended';
+    mode === null || mode === 'college' || mode === 'attended' || mode === 'coimbatore_stay';
 
   const pickOrder = async (n: number) => {
     await setDayOrderForDate(iso, n);

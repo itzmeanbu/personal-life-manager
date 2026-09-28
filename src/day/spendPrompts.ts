@@ -210,6 +210,10 @@ export type TomorrowDayOrder =
   | 'leave'
   | 'coimbatore_stay'
   | 'bunk'
+  | 'event'
+  | 'rest'
+  | 'coding'
+  | 'coimbatore_stay'
   | 'unset';
 
 const TOMORROW_KEY = 'day.tomorrowOrder.v1';
@@ -244,7 +248,11 @@ export const TOMORROW_OPTIONS: { id: TomorrowDayOrder; label: string; emoji: str
   { id: 'college', label: 'College', emoji: '🎓' },
   { id: 'leave', label: 'Leave / holiday', emoji: '🏠' },
   { id: 'coimbatore_stay', label: 'Coimbatore stay', emoji: '🌆' },
-  { id: 'bunk', label: 'Bunk day', emoji: '🏃' },
+  { id: 'bunk', label: 'Partial Attendance Day', emoji: '🏃' },
+  { id: 'event', label: 'Campus Function Day', emoji: '🎉' },
+  { id: 'rest', label: 'Rest & Recharge Day', emoji: '🛋️' },
+  { id: 'coding', label: 'Coding Focus Day', emoji: '💻' },
+  { id: 'coimbatore_stay', label: 'Coimbatore Stay', emoji: '🌆' },
 ];
 
 /** Default college period slots (editable later via settings). */

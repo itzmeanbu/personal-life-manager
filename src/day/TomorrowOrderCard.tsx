@@ -12,7 +12,7 @@ import {
   type TomorrowDayOrder,
   type TomorrowOrderState,
 } from './spendPrompts';
-import { collegeDayStatusesRepo } from '../data/repository';
+import { collegeDayStatusesRepo, dayAssignmentsRepo, dayProfilesRepo } from '../data/repository';
 import { getDemoDate } from '../demo/DemoTools';
 import { setDayOrderForDate, suggestNextDayOrder, getDayOrderForDate } from '../college/dayOrder';
 
@@ -22,7 +22,7 @@ function addDaysIso(iso: string, days: number): string {
   return toIsoDate(d);
 }
 
-export function TomorrowOrderCard({ date = new Date() }: { date?: Date }) {
+export function TomorrowOrderCard({ date = new Date(), onConfigured }: { date?: Date; onConfigured?: () => void }) {
   const todayIso = toIsoDate(date);
   const tomorrowIso = addDaysIso(todayIso, 1);
   const [state, setState] = useState<TomorrowOrderState | null | undefined>(undefined);
@@ -31,8 +31,11 @@ export function TomorrowOrderCard({ date = new Date() }: { date?: Date }) {
   const [savedOrderNum, setSavedOrderNum] = useState<number | null>(null);
 
   const reload = useCallback(async () => {
-    setState(await getTomorrowOrder(tomorrowIso));
-    setSavedOrderNum(await getDayOrderForDate(tomorrowIso));
+    const next = await getTomorrowOrder(tomorrowIso);
+    const orderNum = await getDayOrderForDate(tomorrowIso);
+    setState(next);
+    setSavedOrderNum(orderNum);
+    setNeedOrder(next?.order === 'college' && orderNum == null);
   }, [tomorrowIso]);
 
   useEffect(() => {
@@ -56,7 +59,7 @@ export function TomorrowOrderCard({ date = new Date() }: { date?: Date }) {
       sessionStorage.setItem(key, '1');
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification("Tomorrow's day order", {
-          body: 'College, leave, Coimbatore stay, or bunk? Set it before sleep.',
+          body: 'Choose tomorrow: Academic, Partial Attendance, Campus Function, Rest, Coding, or Coimbatore Stay.',
         });
       }
     } catch {
@@ -68,27 +71,34 @@ export function TomorrowOrderCard({ date = new Date() }: { date?: Date }) {
     const next = await setTomorrowOrder(tomorrowIso, order);
     setState(next);
 
+    const profiles = await dayProfilesRepo.list();
+    const profileKey = order === 'college' ? 'normal' : order === 'bunk' ? 'bunk' : order;
+    const profile = profiles.find((p) => !p.deleted && p.enabled && p.systemKey === profileKey);
+    if (profile) {
+      const assignments = await dayAssignmentsRepo.list();
+      const existingAssignment = assignments.find((a) => a.date === tomorrowIso && !a.deleted);
+      if (existingAssignment) {
+        await dayAssignmentsRepo.update(existingAssignment.id, { profileId: profile.id, checklistDone: [] });
+      } else {
+        await dayAssignmentsRepo.create({ date: tomorrowIso, profileId: profile.id, checklistDone: [] });
+      }
+    }
     if (order === 'bunk' || order === 'college') {
       const rows = await collegeDayStatusesRepo.list();
       const existing = rows.find((r) => r.date === tomorrowIso && !r.deleted);
-      if (existing) {
-        await collegeDayStatusesRepo.update(existing.id, {
-          status: order === 'bunk' ? 'bunked' : 'attended',
-        });
-      } else {
-        await collegeDayStatusesRepo.create({
-          date: tomorrowIso,
-          status: order === 'bunk' ? 'bunked' : 'attended',
-        });
-      }
+      const status = order === 'bunk' ? 'bunked' : 'attended';
+      if (existing) await collegeDayStatusesRepo.update(existing.id, { status });
+      else await collegeDayStatusesRepo.create({ date: tomorrowIso, status });
     }
     setNeedOrder(order === 'college');
+    if (order !== 'college') onConfigured?.();
   };
 
   const pickDayOrderNum = async (n: number) => {
     await setDayOrderForDate(tomorrowIso, n);
     setSavedOrderNum(n);
     setNeedOrder(false);
+    onConfigured?.();
   };
 
   if (state === undefined) return null;

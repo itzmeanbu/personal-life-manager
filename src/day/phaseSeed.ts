@@ -20,8 +20,8 @@ const DEFAULT_PHASES: SeedPhase[] = [
     icon: '☀️',
     order: 0,
     enabled: true,
-    moduleTags: [],
-    categories: ['Morning', 'Hygiene', 'Meals'],
+    moduleTags: ['morning'],
+    categories: [],
     activeDays: [],
   },
   {
@@ -57,7 +57,7 @@ const DEFAULT_PHASES: SeedPhase[] = [
     icon: '🎸',
     order: 4,
     enabled: true,
-    moduleTags: ['guitar'],
+    moduleTags: ['guitar', 'night'],
     categories: ['Music'],
     // every day — guitar especially useful Sunday night after spin
     activeDays: [],
@@ -85,6 +85,15 @@ export function seedDefaultPhasesIfNeeded(): Promise<void> {
     }
     await setFeatureEnabled(SEED_FLAG, true);
   });
+}
+
+/** One-time migration: align the existing phase templates with the phase-by-phase flow. */
+export async function ensurePhaseFlowV2(): Promise<void> {
+  const all = await phasesRepo.list();
+  const morning = all.find((p) => !p.deleted && /morning/i.test(p.name));
+  if (morning) await phasesRepo.update(morning.id, { moduleTags: ['morning'], categories: [] });
+  const evening = all.find((p) => !p.deleted && /evening/i.test(p.name));
+  if (evening) await phasesRepo.update(evening.id, { moduleTags: ['guitar', 'night'], categories: ['Music'] });
 }
 
 /** One-time migration: ensure Spin phase exists even if phases were already seeded. */

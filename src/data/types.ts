@@ -750,6 +750,8 @@ export interface DayProfile extends BaseEntity {
     | 'holiday'
     | 'rest'
     | 'stay_out'
+    | 'coimbatore_stay'
+    | 'coding'
     | 'sunday'
     | null;
   effects: DayProfileEffects;

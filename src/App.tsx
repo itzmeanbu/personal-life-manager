@@ -15,7 +15,7 @@ import { seedEntertainmentCategoriesIfNeeded } from './entertainment/seed';
 import { seedMusicPlaylistsIfNeeded } from './music/seed';
 import { seedBucketListIfNeeded } from './bucket/seed';
 import { seedAchievementsIfNeeded } from './gamification/seed';
-import { seedDefaultPhasesIfNeeded, ensureSpinPhaseExists } from './day/phaseSeed';
+import { seedDefaultPhasesIfNeeded, ensureSpinPhaseExists, ensurePhaseFlowV2 } from './day/phaseSeed';
 import { migrateWeekendJourney } from './day/migrateWeekend';
 import { cleanupDuplicateSeedData } from './data/dedupeSeeds';
 import { getAppearanceConfig } from './appearance/settings';
@@ -66,7 +66,7 @@ function App() {
       seedMusicPlaylistsIfNeeded(),
       seedBucketListIfNeeded(),
       seedAchievementsIfNeeded(),
-      seedDefaultPhasesIfNeeded().then(() => ensureSpinPhaseExists()).then(() => migrateWeekendJourney()),
+      seedDefaultPhasesIfNeeded().then(() => ensurePhaseFlowV2()).then(() => ensureSpinPhaseExists()).then(() => migrateWeekendJourney()),
     ]).then(() => cleanupDuplicateSeedData());
     void getAppearanceConfig().then((c) => {
       if (c.accentColor) document.documentElement.style.setProperty('--color-accent', c.accentColor);

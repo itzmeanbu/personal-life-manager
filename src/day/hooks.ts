@@ -23,8 +23,8 @@ import {
  * Priority:
  * 1. Explicit DayAssignment for that date
  * 2. College bunk status → systemKey 'bunk'
- * 3. Sunday → systemKey 'sunday' if no assignment
- * 4. null (normal day — no special profile)
+ * 3. No automatic weekend assumption — Sunday can be any explicitly assigned day type.
+ * 4. null (normal Academic Day when no special profile is assigned)
  */
 export function useActiveDayProfile(date: Date = new Date()): {
   profile: DayProfile | null;
@@ -32,7 +32,6 @@ export function useActiveDayProfile(date: Date = new Date()): {
   isoDate: string;
 } {
   const isoDate = toIsoDate(date);
-  const dayIndex = date.getDay();
 
   const profiles = useLiveQuery(() => dayProfilesRepo.list(), [], []);
   const assignments = useLiveQuery(() => dayAssignmentsRepo.list(), [], []);
@@ -53,13 +52,8 @@ export function useActiveDayProfile(date: Date = new Date()): {
       return { profile: bunk, assignment: null, isoDate };
     }
 
-    if (dayIndex === 0) {
-      const sunday = list.find((p) => p.systemKey === 'sunday') ?? null;
-      return { profile: sunday, assignment: null, isoDate };
-    }
-
     return { profile: null, assignment: null, isoDate };
-  }, [profiles, assignments, collegeDays, isoDate, dayIndex]);
+  }, [profiles, assignments, collegeDays, isoDate]);
 }
 
 export function useAllDayProfiles(): DayProfile[] {

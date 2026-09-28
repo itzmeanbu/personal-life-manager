@@ -11,6 +11,7 @@ import { emptyEffects } from './effects';
 import { generateId } from '../data/repository';
 
 const SEED_FLAG = 'dayProfilesSeeded';
+const PROFILE_V2_FLAG = 'dayProfilesV2';
 
 function cid(): string {
   return generateId();
@@ -130,6 +131,20 @@ const DEFAULTS: SeedProfile[] = [
     }),
   },
   {
+    name: 'Coding Focus Day',
+    icon: '💻',
+    description: 'Coding-focused day that overrides extracurriculars and spin while essential home routines continue.',
+    enabled: true,
+    systemKey: 'coding',
+    effects: fx({
+      bannerMessage: 'Coding focus — build mode',
+      disableModuleTags: ['workout', 'guitar'],
+      hideModules: ['workout', 'guitar'],
+      focusModules: ['today', 'development', 'learning', 'money', 'sleep'],
+      travelPlan: 'Follow the coding plan and essential routines.',
+    }),
+  },
+  {
     name: 'Campus Function Day',
     icon: '🎉',
     description: 'Campus or external event — travel and timing differ from normal.',
@@ -150,7 +165,7 @@ const DEFAULTS: SeedProfile[] = [
     }),
   },
   {
-    name: 'Recovery Day',
+    name: 'Rest & Recharge Day',
     icon: '🛋️',
     description: 'Spin wheel day — free time, no college pressure.',
     enabled: true,
@@ -195,6 +210,20 @@ const DEFAULTS: SeedProfile[] = [
     }),
   },
   {
+    name: 'Coimbatore Stay',
+    icon: '🌆',
+    description: 'College day while staying in Coimbatore. Uses the configured Coimbatore schedule and no home extracurriculars.',
+    enabled: true,
+    systemKey: 'coimbatore_stay',
+    effects: fx({
+      bannerMessage: 'Coimbatore stay — follow the local schedule',
+      disableModuleTags: ['workout', 'guitar'],
+      hideModules: ['workout', 'guitar'],
+      focusModules: ['today', 'college', 'social', 'money', 'sleep'],
+      travelPlan: 'Use the Coimbatore bus and evening plan configured for the stay.',
+    }),
+  },
+  {
     name: 'Extended Stay Day',
     icon: '🌙',
     description: 'Staying out late or overnight — home routines deferred.',
@@ -235,18 +264,55 @@ const DEFAULTS: SeedProfile[] = [
   },
 ];
 
-export function seedDayProfilesIfNeeded(): Promise<void> {
-  return runSeedOnce(SEED_FLAG, async () => {
-  if (await isFeatureEnabled(SEED_FLAG, false)) return;
-  const existing = await dayProfilesRepo.list();
-  if (existing.length > 0) {
+async function applyProfileFlowV2(): Promise<void> {
+  if (await isFeatureEnabled(PROFILE_V2_FLAG, false)) return;
+  const profiles = await dayProfilesRepo.list();
+  const active = profiles.filter((p) => !p.deleted);
+  const byKey = (key: NonNullable<DayProfile['systemKey']>) => active.find((p) => p.systemKey === key);
+
+  const rest = byKey('rest');
+  if (rest) {
+    await dayProfilesRepo.update(rest.id, {
+      name: 'Rest & Recharge Day',
+      effects: { ...rest.effects, disableModuleTags: Array.from(new Set([...(rest.effects.disableModuleTags ?? []), 'workout', 'guitar'])) },
+    });
+  }
+  const event = byKey('event');
+  if (event) {
+    await dayProfilesRepo.update(event.id, {
+      name: 'Campus Function Day',
+      effects: { ...event.effects, disableModuleTags: Array.from(new Set([...(event.effects.disableModuleTags ?? []), 'workout', 'guitar'])) },
+    });
+  }
+
+  if (!byKey('coding')) {
+    await dayProfilesRepo.create({
+      name: 'Coding Focus Day', icon: '💻', description: 'Coding-focused day that overrides extracurriculars and spin while essential home routines continue.', enabled: true, order: 20, systemKey: 'coding',
+      effects: fx({ bannerMessage: 'Coding focus — build mode', disableModuleTags: ['workout', 'guitar'], hideModules: ['workout', 'guitar'], focusModules: ['today', 'development', 'learning', 'money', 'sleep'] }),
+    });
+  }
+  if (!byKey('coimbatore_stay')) {
+    await dayProfilesRepo.create({
+      name: 'Coimbatore Stay', icon: '🌆', description: 'College day while staying in Coimbatore. Uses the local schedule with no home extracurriculars.', enabled: true, order: 21, systemKey: 'coimbatore_stay',
+      effects: fx({ bannerMessage: 'Coimbatore stay — follow the local schedule', disableModuleTags: ['workout', 'guitar'], hideModules: ['workout', 'guitar'], focusModules: ['today', 'college', 'social', 'money', 'sleep'] }),
+    });
+  }
+  await setFeatureEnabled(PROFILE_V2_FLAG, true);
+}
+
+export async function seedDayProfilesIfNeeded(): Promise<void> {
+  await runSeedOnce(SEED_FLAG, async () => {
+    if (await isFeatureEnabled(SEED_FLAG, false)) return;
+    const existing = await dayProfilesRepo.list();
+    if (existing.length > 0) {
+      await setFeatureEnabled(SEED_FLAG, true);
+      return;
+    }
+    let order = 0;
+    for (const p of DEFAULTS) {
+      await dayProfilesRepo.create({ ...p, order: order++ });
+    }
     await setFeatureEnabled(SEED_FLAG, true);
-    return;
-  }
-  let order = 0;
-  for (const p of DEFAULTS) {
-    await dayProfilesRepo.create({ ...p, order: order++ });
-  }
-  await setFeatureEnabled(SEED_FLAG, true);
-});
+  });
+  await applyProfileFlowV2();
 }
