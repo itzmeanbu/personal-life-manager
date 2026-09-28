@@ -39,7 +39,7 @@ import {
   actionFinishWhatsTomorrow,
   phaseAllows,
 } from '../day/journeyState';
-import { effectiveDayStatus, getWakeTime } from '../day/spendPrompts';
+import { getWakeTime } from '../day/spendPrompts';
 import { getDayOrderForDate } from '../college/dayOrder';
 import { scheduleForDayOrder, formatMinHm } from '../college/timetable';
 import { dayAssignmentsRepo } from '../data/repository';

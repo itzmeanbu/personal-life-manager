@@ -48,12 +48,20 @@ export async function getDayOrderForDate(iso: string): Promise<number | null> {
     .sort();
   if (earlier.length === 0) {
     const saved = await getSetting<{ order: number; date?: string } | null>(LAST_KEY, null);
-    if (saved?.order >= 1 && saved.order <= 6 && saved.date && saved.date < iso) {
-      const last = new Date(saved.date + 'T12:00:00');
+    const savedOrder = saved?.order;
+    const savedDate = saved?.date;
+    if (
+      savedOrder != null &&
+      savedOrder >= 1 &&
+      savedOrder <= 6 &&
+      savedDate != null &&
+      savedDate < iso
+    ) {
+      const last = new Date(savedDate + 'T12:00:00');
       const cur = new Date(iso + 'T12:00:00');
       const diffDays = Math.round((cur.getTime() - last.getTime()) / 86400000);
       if (diffDays >= 1) {
-        let next = saved.order;
+        let next = savedOrder;
         for (let i = 0; i < diffDays; i++) {
           next = next >= 6 ? 1 : next + 1;
         }
