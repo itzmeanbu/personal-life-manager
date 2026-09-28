@@ -16,10 +16,10 @@ import { seedWorkoutEngineIfNeeded } from './workout/seed';
 import { seedSpinWheelsIfNeeded } from './spin/seed';
 import { ensureWeeklyChoresOnSpin } from './spin/weeklyChores';
 import { seedEntertainmentCategoriesIfNeeded } from './entertainment/seed';
-import { seedMusicPlaylistsIfNeeded } from './music/seed';
+import { seedMusicPlaylistsIfNeeded, ensureBusPlaylistsExist } from './music/seed';
 import { seedBucketListIfNeeded } from './bucket/seed';
 import { seedAchievementsIfNeeded } from './gamification/seed';
-import { seedDefaultPhasesIfNeeded } from './day/phaseSeed';
+import { seedDefaultPhasesIfNeeded, ensureBusPhasesExist } from './day/phaseSeed';
 import { migrateWeekendJourney } from './day/migrateWeekend';
 import { cleanupDuplicateSeedData } from './data/dedupeSeeds';
 import { getAppearanceConfig } from './appearance/settings';
@@ -70,10 +70,12 @@ function App() {
       seedWorkoutEngineIfNeeded(),
       seedSpinWheelsIfNeeded().then(() => ensureWeeklyChoresOnSpin()),
       seedEntertainmentCategoriesIfNeeded(),
-      seedMusicPlaylistsIfNeeded(),
+      seedMusicPlaylistsIfNeeded().then(() => ensureBusPlaylistsExist()),
       seedBucketListIfNeeded(),
       seedAchievementsIfNeeded(),
-      seedDefaultPhasesIfNeeded().then(() => migrateWeekendJourney()),
+      seedDefaultPhasesIfNeeded()
+        .then(() => migrateWeekendJourney())
+        .then(() => ensureBusPhasesExist()),
     ]).then(() => cleanupDuplicateSeedData());
     void getAppearanceConfig().then((c) => {
       if (c.accentColor) document.documentElement.style.setProperty('--color-accent', c.accentColor);

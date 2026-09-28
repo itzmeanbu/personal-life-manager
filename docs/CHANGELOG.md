@@ -1,5 +1,22 @@
 # Changelog
 
+## Late-wake college intelligence
+
+- Wake ~**6:00** college day → rush plan: bare minimum routines, leave ~7:00–7:15, **join after Period 1** (ends 09:55). One-tap log late / after P1.
+- Wake ~**7:00+** → **you're cooked** — don't force the bus. Roast + one-tap **Mark bunked / stay home**.
+- On-time (&lt;05:45) → full morning, hit P1.
+- Settings key `college.lateWake` (onTimeUntilMin, lateOkUntilMin, busMinutes, rushMinutes).
+- Files: `college/lateWake.ts`, `day/LateWakeCard.tsx` on Home after wake logged.
+
+## Morning eat fix, Tamil greetings, bus music phases
+
+- **Why "Did you eat?" showed after leave home:** Meal gate used 8:00+ on weekdays, which is after leave (~6:00). Fixed to morning-only window (weekdays 5:00–7:00, Sunday 7:00–10:00) so it never asks on the bus or at college. Breakfast stays in the morning routine.
+- **Greetings:** Tamil + English only (Kaalai vanakkam, Vanakkam, Good morning, etc.) — removed Korean/Japanese/Spanish/French.
+- **Bus phases:** Bus to College + Bus Home + Outside College (8:50–9:00) in default phase seed; ensure helpers for existing installs.
+- **Music:** Bus English + Bus Tamil playlists (import your MP3s). Shuffle/random per ride — not sequential song 1→2→3.
+- **Lunch:** Spend prompt + seeded "Lunch + canteen" routine 12:30–1:40 (includes canteen commute). Night Dinner added.
+- **Coding:** Still overwrites home activities only (workout/spin/guitar skipped); college phases stay so you attend.
+
 ## Wake gate, time-anchored morning, nav fix
 
 - Welcome page is now a full-screen "Did you wake up?" (Yes / I woke up earlier / Not yet). Shown 04:00-15:00 until a wake time is logged.

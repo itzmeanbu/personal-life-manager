@@ -1,5 +1,7 @@
 /**
- * After ~07:30: "Did you eat?"
+ * Morning-only: "Did you eat?" (breakfast is part of the morning routine).
+ * Window is before leave-home on weekdays (05:00–07:00) so it never asks
+ * after you are already on the bus / at college.
  * No → pick time → in-app alert at that time → 30 min break → free time.
  */
 import { useCallback, useEffect, useState } from 'react';
@@ -147,9 +149,9 @@ export function MealPrompt({ date = new Date() }: { date?: Date }) {
 
   return (
     <Card style={{ marginBottom: 12 }}>
-      <strong>Did you eat?</strong>
+      <strong>Did you eat? (morning)</strong>
       <p style={{ margin: '6px 0 12px', fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
-        Sunday asks from 7:30; other days from 8:00 (after wash). Change time if you need.
+        Breakfast is part of your morning routine — before you leave. Weekdays 5–7am; Sunday 7–10am. This will not ask after you leave home.
       </p>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
         <Button variant="primary" onClick={markAte}>

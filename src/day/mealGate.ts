@@ -33,17 +33,26 @@ export async function setMealGate(
   return next;
 }
 
-/** Minutes past midnight when we first ask about food. */
+/**
+ * Morning eat ask window — MUST be before leave-home, not after college.
+ * Weekdays: 05:00–07:00 (breakfast is part of morning routine; leave ~06:00).
+ * Sunday: 07:00–10:00 (no college rush).
+ * Never ask after the morning window so it does not pop up on the bus / at college.
+ */
 export function mealAskAfterMinutes(date: Date): number {
-  // Sunday → 07:30; other days → 08:00 (after typical wash/bath block)
-  return date.getDay() === 0 ? 7 * 60 + 30 : 8 * 60;
+  return date.getDay() === 0 ? 7 * 60 : 5 * 60;
+}
+
+/** Upper bound (exclusive) of the morning eat ask window. */
+export function mealAskUntilMinutes(date: Date): number {
+  return date.getDay() === 0 ? 10 * 60 : 7 * 60;
 }
 
 export function shouldAskMeal(now: Date, state: MealGateState): boolean {
   if (state.ate === true) return false;
   if (state.ate === false && state.eatAtHm) return false;
   const mins = now.getHours() * 60 + now.getMinutes();
-  return mins >= mealAskAfterMinutes(now);
+  return mins >= mealAskAfterMinutes(now) && mins < mealAskUntilMinutes(now);
 }
 
 export function shouldAlertEat(now: Date, state: MealGateState): boolean {

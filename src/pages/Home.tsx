@@ -20,6 +20,7 @@ import {
   BUNK_SPIN_END_HM,
 } from '../home/encourage';
 import { MealPrompt } from '../day/MealPrompt';
+import { LateWakeCard } from '../day/LateWakeCard';
 import { DayAsksCard } from '../day/DayAsksCard';
 import { DayBriefBody } from '../day/DayBriefBody';
 import { effectiveDayStatus, getWakeTime } from '../day/spendPrompts';
@@ -418,6 +419,11 @@ export default function Home() {
           {currentPhase.icon ? `${currentPhase.icon} ` : ''}
           {phaseHeading(currentPhase.name)}
         </h1>
+
+        {/* Late wake → after P1 or cooked (college weekdays only) */}
+        <div style={{ width: '100%', marginTop: 8 }}>
+          <LateWakeCard date={today.date} wakeMin={wakeMin} />
+        </div>
 
         {/* Progress bar */}
         {totalCount > 0 && (

@@ -16,7 +16,7 @@ type SeedPhase = Omit<Phase, keyof import('../data/types').BaseEntity>;
 
 const DEFAULT_PHASES: SeedPhase[] = [
   {
-    name: 'Morning To-Do',
+    name: 'Morning',
     icon: '☀️',
     order: 0,
     enabled: true,
@@ -25,18 +25,48 @@ const DEFAULT_PHASES: SeedPhase[] = [
     activeDays: [],
   },
   {
-    name: 'College',
-    icon: '🎓',
+    // After leave home → vanishes when bus ends. Music: random from Bus English / Bus Tamil.
+    name: 'Bus to College',
+    icon: '🚌',
     order: 1,
+    enabled: true,
+    moduleTags: ['college', 'music'],
+    categories: ['Commute'],
+    activeDays: [1, 2, 3, 4, 5],
+  },
+  {
+    // 8:50–9:00 outside college buffer before timetable starts.
+    name: 'Outside College',
+    icon: '🏫',
+    order: 2,
     enabled: true,
     moduleTags: ['college'],
     categories: [],
-    activeDays: [],
+    activeDays: [1, 2, 3, 4, 5],
+  },
+  {
+    name: 'College',
+    icon: '🎓',
+    order: 3,
+    enabled: true,
+    moduleTags: ['college'],
+    categories: [],
+    activeDays: [1, 2, 3, 4, 5],
+  },
+  {
+    // After college / bunk → evening bus + another random song from the 2 playlists.
+    name: 'Bus Home',
+    icon: '🚌',
+    order: 4,
+    enabled: true,
+    moduleTags: ['college', 'music'],
+    categories: ['Commute'],
+    activeDays: [1, 2, 3, 4, 5],
   },
   {
     name: 'Workout',
     icon: '🏋️',
-    order: 2,
+    order: 5,
     enabled: true,
     moduleTags: ['workout'],
     categories: [],
@@ -45,27 +75,26 @@ const DEFAULT_PHASES: SeedPhase[] = [
   {
     name: 'Spin & Free Time',
     icon: '🎡',
-    order: 3,
+    order: 6,
     enabled: true,
     moduleTags: ['spin'],
     categories: [],
-    // Weekend by default — user can add weekdays in Weekly Schedule / phase edit later
+    // Weekends + bunk / extra time at home (4:00–7:30 window uses spin when free).
     activeDays: [0, 6],
   },
   {
     name: 'Evening',
     icon: '🎸',
-    order: 4,
+    order: 7,
     enabled: true,
     moduleTags: ['guitar'],
     categories: ['Music'],
-    // every day — guitar especially useful Sunday night after spin
     activeDays: [],
   },
   {
     name: 'Sleep',
     icon: '😴',
-    order: 5,
+    order: 8,
     enabled: true,
     moduleTags: [],
     categories: ['Rest'],
@@ -97,10 +126,52 @@ export async function ensureSpinPhaseExists(): Promise<void> {
   await phasesRepo.create({
     name: 'Spin & Free Time',
     icon: '🎡',
-    order: 3,
+    order: 6,
     enabled: true,
     moduleTags: ['spin'],
     categories: [],
     activeDays: [0, 6],
   });
+}
+
+/** One-time: add Bus + Outside College phases for existing installs. */
+export async function ensureBusPhasesExist(): Promise<void> {
+  const all = await phasesRepo.list();
+  const names = all.filter((p) => !p.deleted).map((p) => p.name.toLowerCase());
+  const hasBusTo = names.some((n) => n.includes('bus to') || n.includes('bus morning'));
+  const hasOutside = names.some((n) => n.includes('outside college'));
+  const hasBusHome = names.some((n) => n.includes('bus home') || n.includes('bus evening'));
+  if (!hasBusTo) {
+    await phasesRepo.create({
+      name: 'Bus to College',
+      icon: '🚌',
+      order: 1,
+      enabled: true,
+      moduleTags: ['college', 'music'],
+      categories: ['Commute'],
+      activeDays: [1, 2, 3, 4, 5],
+    });
+  }
+  if (!hasOutside) {
+    await phasesRepo.create({
+      name: 'Outside College',
+      icon: '🏫',
+      order: 2,
+      enabled: true,
+      moduleTags: ['college'],
+      categories: [],
+      activeDays: [1, 2, 3, 4, 5],
+    });
+  }
+  if (!hasBusHome) {
+    await phasesRepo.create({
+      name: 'Bus Home',
+      icon: '🚌',
+      order: 4,
+      enabled: true,
+      moduleTags: ['college', 'music'],
+      categories: ['Commute'],
+      activeDays: [1, 2, 3, 4, 5],
+    });
+  }
 }

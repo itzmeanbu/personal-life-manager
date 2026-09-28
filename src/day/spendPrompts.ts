@@ -54,14 +54,14 @@ export const SPEND_PROMPTS: SpendPromptDef[] = [
   },
   {
     id: 'lunch_1150',
-    startMin: 11 * 60 + 50,
-    endMin: 13 * 60 + 30,
-    question: 'Lunch — how much did you spend?',
+    startMin: 12 * 60 + 30, // 12:30 — college lunch window
+    endMin: 13 * 60 + 40, // 13:40
+    question: 'Lunch / canteen — how much did you spend?',
     yesNoFirst: true,
-    yesNoLabel: 'Did you eat / buy lunch?',
+    yesNoLabel: 'Did you eat lunch (canteen / pack)?',
     category: 'food',
-    notifyTitle: 'Lunch spend',
-    notifyBody: 'Around 11:50 — log lunch if you spent.',
+    notifyTitle: 'Lunch / canteen',
+    notifyBody: '12:30–1:40 — log lunch or canteen spend (and the canteen walk).',
   },
   {
     id: 'tea_1630',

@@ -19,42 +19,41 @@ const DAY_NAMES: DayName[] = [
   'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
 ];
 
-/** English + romanized Korean/Japanese + a bit of Spanish/French — all Latin script. */
+/**
+ * Languages the user is familiar with (Tamil + English).
+ * Tamil is written in Latin script for UI readability on any font.
+ */
 const GREETINGS = {
   lateNight: [
     'Still up?',
-    'Annyeong — still awake?',
-    'Oyasumi soon?',
-    'Hola, still here?',
-    'Bonjour from the night',
+    'Innum thoongala?',
+    'Late night mode',
+    'Rest soon',
   ],
   morning: [
     'Good morning',
-    'Annyeonghaseyo',
-    'Ohayo',
-    'Hola',
-    'Bonjour',
+    'Kaalai vanakkam',
+    'Hi — good morning',
+    'Vanakkam',
+    'Morning vro',
   ],
   afternoon: [
     'Good afternoon',
-    'Annyeong',
-    'Konnichiwa',
-    'Hola',
-    'Bonjour',
+    'Madhiya vanakkam',
+    'Hi',
+    'Afternoon',
   ],
   evening: [
     'Good evening',
-    'Annyeonghaseyo',
-    'Konbanwa',
-    'Hola',
-    'Bonsoir',
+    'Maalai vanakkam',
+    'Hi — evening',
+    'Vanakkam',
   ],
   night: [
     'Winding down',
-    'Jal jayo',
-    'Oyasumi',
-    'Buenas noches',
-    'Bonne nuit',
+    'Nalla thoongu',
+    'Good night',
+    'Rest well',
   ],
 };
 
