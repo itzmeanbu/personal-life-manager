@@ -20,55 +20,42 @@ const DAY_NAMES: DayName[] = [
 ];
 
 /**
- * All greetings in Latin/English script (romanized where needed).
- * Mix: English, Tamil, Korean, Japanese, Spanish, French, Hindi.
+ * English letters only. English + French + Korean + Japanese (romanized).
+ * No Tamil, Spanish, or Hindi.
  */
 const GREETINGS = {
   lateNight: [
     'Still up?',
     'Annyeong — still awake?',
     'Oyasumi soon?',
-    'Innum thoongala?',
-    'Hola, still here?',
+    'Bonsoir from the night',
     'Late night mode',
   ],
   morning: [
     'Good morning',
-    'Kaalai vanakkam',
+    'Bonjour',
     'Annyeonghaseyo',
     'Ohayo',
-    'Hola',
-    'Bonjour',
-    'Namaste',
-    'Vanakkam',
     'Hi — good morning',
-    'Morning vro',
+    'Morning',
   ],
   afternoon: [
     'Good afternoon',
-    'Madhiya vanakkam',
+    'Bonjour',
     'Annyeong',
     'Konnichiwa',
-    'Hola',
-    'Bonjour',
-    'Namaste',
   ],
   evening: [
     'Good evening',
-    'Maalai vanakkam',
+    'Bonsoir',
     'Annyeonghaseyo',
     'Konbanwa',
-    'Hola',
-    'Bonsoir',
-    'Namaste',
   ],
   night: [
     'Winding down',
+    'Bonne nuit',
     'Jal jayo',
     'Oyasumi',
-    'Nalla thoongu',
-    'Buenas noches',
-    'Bonne nuit',
     'Good night',
     'Rest well',
   ],

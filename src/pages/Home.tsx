@@ -25,6 +25,8 @@ import { DayAsksCard } from '../day/DayAsksCard';
 import { BusMusicPhase } from '../day/BusMusicPhase';
 import { CollegePhasePanel } from '../day/CollegePhasePanel';
 import { NightPhasePanel } from '../day/NightPhasePanel';
+import { SpendPromptsCard } from '../day/SpendPromptsCard';
+import { DaySpendSummary } from '../day/DaySpendSummary';
 import { TomorrowOrderCard } from '../day/TomorrowOrderCard';
 import {
   type JourneyPhaseId,
@@ -38,8 +40,9 @@ import {
   actionOpenWhatsTomorrow,
   actionFinishWhatsTomorrow,
   phaseAllows,
+  isLeaveStyleDay,
 } from '../day/journeyState';
-import { getWakeTime } from '../day/spendPrompts';
+import { getWakeTime, effectiveDayStatus, type TomorrowDayOrder } from '../day/spendPrompts';
 import { getDayOrderForDate } from '../college/dayOrder';
 import { dayAssignmentsRepo } from '../data/repository';
 import { toIsoDate } from '../routine/engine';
@@ -79,6 +82,7 @@ export default function Home() {
   );
 
   const [journey, setJourney] = useState<JourneyState | null>(null);
+  const [dayStatus, setDayStatus] = useState<TomorrowDayOrder | null>(null);
   const [dayOrder, setDayOrder] = useState<number | null>(null);
   const [wakeMin, setWakeMin] = useState<number | null>(null);
   const [skipRoast, setSkipRoast] = useState<string | null>(null);
@@ -104,6 +108,7 @@ export default function Home() {
     const j = await resolveJourneyPhase(today.date, nowMin);
     setJourney(j);
     setDayOrder(await getDayOrderForDate(iso));
+    setDayStatus(await effectiveDayStatus(iso));
   }, [today.date, nowMin, iso]);
 
   useEffect(() => {
@@ -286,7 +291,7 @@ export default function Home() {
             }}
           >
             {meta.icon} {meta.label}
-            {dayOrder != null ? ` · Day order ${dayOrder}` : ''}
+            {dayOrder != null && !today.isWeekend ? ` · Day order ${dayOrder}` : today.isWeekend ? ' · Weekend (no college day order)' : ''}
             {wakeMin != null ? ` · up since ${formatHm12(minToHm(wakeMin))}` : ''}
             {progress && position.total > 0
               ? ` · engine ${position.current}/${position.total}`
@@ -405,7 +410,7 @@ export default function Home() {
         {allows.leaveAsks && <DayAsksCard date={today.date} forceSlot="morning" />}
         {allows.mealMorning && <MealPrompt date={today.date} />}
 
-        {dayOrder == null && !today.isWeekend && (
+        {dayOrder == null && !today.isWeekend && !isLeaveStyleDay(dayStatus) && (
           <Card style={{ marginBottom: 12 }}>
             <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
               No day order yet (leave/bunk days don&apos;t consume order). Set order in College if
@@ -418,20 +423,57 @@ export default function Home() {
             </Link>
           </Card>
         )}
-        <Card style={{ textAlign: 'center', padding: '20px 16px', marginTop: 8 }}>
-          <p style={{ fontWeight: 600, margin: '0 0 6px' }}>Leaving home now?</p>
-          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', margin: '0 0 12px' }}>
-            Yes → bus phase (asks if you entered the bus, then music).
-          </p>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Button variant="primary" onClick={() => void goLeftHome()}>
-              Yes — left home
+        <SpendPromptsCard date={today.date} />
+        {today.isWeekend ? (
+          <Card style={{ textAlign: 'center', padding: '20px 16px', marginTop: 8 }}>
+            <div style={{ fontSize: 40, marginBottom: 6 }}>🎡</div>
+            <p style={{ fontWeight: 600, margin: '0 0 6px' }}>Weekend — no college</p>
+            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', margin: '0 0 12px' }}>
+              Sat/Sun is rest / outing, not a college day (no bus, no day order). After morning checks → spin & free time.
+            </p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <Button
+                variant="primary"
+                onClick={async () => {
+                  await actionReachedHome(iso);
+                  await reloadJourney();
+                }}
+              >
+                Morning done → spin / free time
+              </Button>
+              <Link to="/spin">
+                <Button variant="secondary">Open Spin Wheel</Button>
+              </Link>
+            </div>
+          </Card>
+        ) : isLeaveStyleDay(dayStatus) ? (
+          <Card style={{ textAlign: 'center', padding: '20px 16px', marginTop: 8 }}>
+            <p style={{ fontWeight: 600, margin: '0 0 6px' }}>
+              {dayStatus === 'coimbatore_stay' ? 'Coimbatore stay' : 'Leave day'} — no college
+            </p>
+            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', margin: '0 0 12px' }}>
+              Morning routines only. Tonight: night checklist + spend. No bus.
+            </p>
+            <Button variant="primary" onClick={() => void goWhatsTomorrow()}>
+              Morning done → what&apos;s tomorrow / night
             </Button>
-            <Button variant="ghost" onClick={() => { /* stay in morning */ }}>
-              Not yet
-            </Button>
-          </div>
-        </Card>
+          </Card>
+        ) : (
+          <Card style={{ textAlign: 'center', padding: '20px 16px', marginTop: 8 }}>
+            <p style={{ fontWeight: 600, margin: '0 0 6px' }}>Leaving home now?</p>
+            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', margin: '0 0 12px' }}>
+              College weekday only. Yes → bus → music.
+            </p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <Button variant="primary" onClick={() => void goLeftHome()}>
+                Yes — left home
+              </Button>
+              <Button variant="ghost" onClick={() => {}}>
+                Not yet
+              </Button>
+            </div>
+          </Card>
+        )}
       </>
     );
   } else if (phase === 'MORNING_BUS') {
@@ -444,56 +486,38 @@ export default function Home() {
     body = (
       <>
         <Card style={{ marginBottom: 12, borderLeft: '3px solid var(--color-accent)' }}>
-          <p style={{ margin: 0, fontSize: 'var(--text-sm)' }}>{nudgeText}</p>
+          <p style={{ margin: 0, fontWeight: 600 }}>Home — evening sequence</p>
+          <p style={{ margin: '6px 0 0', fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
+            Order: <strong>Workout</strong> → <strong>Guitar</strong> → <strong>Bath / night serum</strong> →
+            what&apos;s tomorrow (day order) → sleep.
+          </p>
+        </Card>
+        <Card style={{ marginBottom: 12 }}>
+          <p style={{ margin: '0 0 8px', fontSize: 'var(--text-sm)' }}>Quick links</p>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Link to="/workout"><Button variant="secondary">Workout</Button></Link>
+            <Link to="/guitar"><Button variant="secondary">Guitar</Button></Link>
+            <Link to="/spin"><Button variant="ghost">Spin (if free)</Button></Link>
+          </div>
         </Card>
         {routineBlock}
-        {action && !homeReady && (
-          <Card style={{ marginBottom: 16, textAlign: 'center', padding: '24px 16px' }}>
-            <div style={{ fontSize: 48, marginBottom: 8 }}>🚪</div>
-            <p style={{ fontSize: 'var(--text-lg)', fontWeight: 600, margin: '0 0 8px' }}>
-              Out of the house
-            </p>
-            <Button
-              variant="primary"
-              onClick={async () => {
-                await homeArrival.imHome();
-                await refresh();
-              }}
-            >
-              I&apos;m home — unlock free time
-            </Button>
-          </Card>
-        )}
-        {action && homeReady && bunkSpinClosed && (
-          <Card style={{ marginBottom: 16, textAlign: 'center', padding: '24px 16px' }}>
-            <p style={{ fontWeight: 600 }}>Free time closed ({BUNK_SPIN_END_HM})</p>
-            <Button variant="primary" onClick={finishEnginePhase}>
-              Continue to evening →
-            </Button>
-          </Card>
-        )}
+        <SpendPromptsCard date={today.date} />
         {action && homeReady && !bunkSpinClosed && (
-          <Card style={{ marginBottom: 16, textAlign: 'center', padding: '24px 16px' }}>
-            <div style={{ fontSize: 48, marginBottom: 8 }}>🎡</div>
+          <Card style={{ marginBottom: 16, textAlign: 'center', padding: '16px' }}>
+            <div style={{ fontSize: 40, marginBottom: 6 }}>🎡</div>
             <p style={{ fontWeight: 600, margin: '0 0 8px' }}>Free time / spin</p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Link to="/spin">
-                <Button variant="primary">Open Spin Wheel</Button>
-              </Link>
-              <Button variant="secondary" onClick={finishEnginePhase}>
-                Done with free time →
-              </Button>
+              <Link to="/spin"><Button variant="primary">Open Spin</Button></Link>
+              <Button variant="secondary" onClick={finishEnginePhase}>Done free time</Button>
             </div>
           </Card>
         )}
-        {currentPhase && (
-          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
-            Engine phase: {phaseHeading(currentPhase.name)}
-          </p>
-        )}
         <Card style={{ textAlign: 'center', padding: '16px', marginTop: 12 }}>
+          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', margin: '0 0 10px' }}>
+            Finished workout / guitar / bath? Next: tomorrow&apos;s day order, then night + sleep.
+          </p>
           <Button variant="primary" onClick={() => void goWhatsTomorrow()}>
-            What&apos;s tomorrow? →
+            What&apos;s tomorrow? (day order) →
           </Button>
         </Card>
       </>
@@ -535,13 +559,24 @@ export default function Home() {
         )}
         <Card style={{ textAlign: 'center', padding: '16px', marginTop: 16 }}>
           <Button variant="primary" onClick={() => void finishTomorrow()}>
-            Done — good night →
+            Done — night routine + sleep →
           </Button>
         </Card>
       </>
     );
   } else if (phase === 'NIGHT') {
-    body = <NightPhasePanel date={today.date} />;
+    body = (
+      <>
+        <NightPhasePanel date={today.date} />
+        <SpendPromptsCard date={today.date} />
+        <DaySpendSummary date={today.date} />
+        <Card style={{ marginTop: 12, textAlign: 'center', padding: '16px' }}>
+          <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
+            Bath · serum · night asks · then sleep. New journey starts after midnight.
+          </p>
+        </Card>
+      </>
+    );
   }
 
   return (

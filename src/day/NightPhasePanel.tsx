@@ -38,7 +38,7 @@ export function NightPhasePanel({ date = new Date() }: { date?: Date }) {
           Good night
         </p>
         <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', margin: 0 }}>
-          Night phase only — morning, college, and bus controls are gone.
+          Night checklist (bath, serum, charge…) then sleep. Morning / college / bus are gone.
         </p>
       </Card>
 

@@ -43,6 +43,12 @@ export async function getDayOrderForDate(iso: string): Promise<number | null> {
   const n = map[iso];
   if (n >= 1 && n <= 6) return n;
 
+  // Day order is for COLLEGE days only — not Sat/Sun rest/outing by default
+  const dow = new Date(iso + 'T12:00:00').getDay();
+  if (dow === 0 || dow === 6) {
+    return null;
+  }
+
   const earlier = Object.keys(map)
     .filter((d) => d < iso)
     .sort();
@@ -62,7 +68,11 @@ export async function getDayOrderForDate(iso: string): Promise<number | null> {
       const diffDays = Math.round((cur.getTime() - last.getTime()) / 86400000);
       if (diffDays >= 1) {
         let next = savedOrder;
+        const cursor = new Date(savedDate + 'T12:00:00');
         for (let i = 0; i < diffDays; i++) {
+          cursor.setDate(cursor.getDate() + 1);
+          const d = cursor.getDay();
+          if (d === 0 || d === 6) continue;
           next = next >= 6 ? 1 : next + 1;
         }
         map[iso] = next;
@@ -82,8 +92,13 @@ export async function getDayOrderForDate(iso: string): Promise<number | null> {
   const diffDays = Math.round((cur.getTime() - last.getTime()) / 86400000);
   if (diffDays < 1) return lastOrder;
 
+  // +1 per weekday only (Sat/Sun do not consume day-order slots)
   let next = lastOrder;
+  const cursor = new Date(lastDate + 'T12:00:00');
   for (let i = 0; i < diffDays; i++) {
+    cursor.setDate(cursor.getDate() + 1);
+    const d = cursor.getDay();
+    if (d === 0 || d === 6) continue; // weekend — not a college day-order day
     next = next >= 6 ? 1 : next + 1;
   }
 

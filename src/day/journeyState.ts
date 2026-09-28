@@ -128,7 +128,28 @@ const COLLEGE_FLOW: JourneyPhaseId[] = [
   'NIGHT',
 ];
 
-/** Leave / weekend / coding-at-home style day (no campus). */
+/**
+ * Leave / Coimbatore stay / didn't-go:
+ * Morning after wake + night routines + spend only (no bus/college).
+ */
+const LEAVE_FLOW: JourneyPhaseId[] = [
+  'MORNING_BEFORE_LEAVING',
+  'WHATS_TOMORROW',
+  'NIGHT',
+];
+
+/**
+ * Sat/Sun = NOT college. Morning → free time / spin → tomorrow → night.
+ * Outing/event uses special day profile, still no college bus unless user forces college status.
+ */
+const WEEKEND_FLOW: JourneyPhaseId[] = [
+  'MORNING_BEFORE_LEAVING',
+  'HOME_EVENING',
+  'WHATS_TOMORROW',
+  'NIGHT',
+];
+
+/** Rest-at-home weekday (optional evening activities). */
 const HOME_FLOW: JourneyPhaseId[] = [
   'MORNING_BEFORE_LEAVING',
   'HOME_EVENING',
@@ -140,14 +161,34 @@ export function flowForDay(opts: {
   isWeekend: boolean;
   dayStatus: TomorrowDayOrder | null;
 }): JourneyPhaseId[] {
-  if (opts.isWeekend) return HOME_FLOW;
-  if (statusSkipsCollege(opts.dayStatus) && opts.dayStatus !== 'bunk') {
-    // bunk still goes to college structure (user may half-day) — keep COLLEGE in flow
-    // leave / didnt_go / coding / coimbatore_stay → home flow
-    return HOME_FLOW;
+  // Weekend is never a normal college day (outing ≠ college)
+  if (opts.isWeekend) {
+    if (opts.dayStatus === 'college') {
+      // Explicit override only if user forces college on weekend (rare event)
+      return COLLEGE_FLOW;
+    }
+    return WEEKEND_FLOW;
   }
-  // bunk keeps college phase (bunk is a college status, not a separate day type)
+  const s = opts.dayStatus;
+  if (
+    s === 'leave' ||
+    s === 'coimbatore_stay' ||
+    s === 'didnt_go' ||
+    s === 'coding'
+  ) {
+    return LEAVE_FLOW;
+  }
   return COLLEGE_FLOW;
+}
+
+/** True when day is leave-like (incl. Coimbatore stay). */
+export function isLeaveStyleDay(status: TomorrowDayOrder | null | undefined): boolean {
+  return (
+    status === 'leave' ||
+    status === 'coimbatore_stay' ||
+    status === 'didnt_go' ||
+    status === 'coding'
+  );
 }
 
 /**
@@ -221,8 +262,11 @@ export async function advanceTo(
 /** User actions — each advances and sets flags so reopen stays correct. */
 export async function actionLeftHome(iso: string): Promise<JourneyState> {
   const status = await effectiveDayStatus(iso);
-  const skipCampus = statusSkipsCollege(status) && status !== 'bunk';
-  if (skipCampus) {
+  if (isLeaveStyleDay(status)) {
+    // Leave / Coimbatore: no bus — jump toward evening plan / tomorrow
+    return advanceTo(iso, 'WHATS_TOMORROW', { leftHome: true, reachedHome: true });
+  }
+  if (statusSkipsCollege(status) && status !== 'bunk') {
     return advanceTo(iso, 'HOME_EVENING', { leftHome: true });
   }
   return advanceTo(iso, 'MORNING_BUS', { leftHome: true });
@@ -272,5 +316,7 @@ export function phaseAllows(phase: JourneyPhaseId) {
     whatsTomorrow: phase === 'WHATS_TOMORROW',
     nightRoutine: phase === 'NIGHT',
     nightMusic: phase === 'NIGHT',
+    /** Spend prompts — leave/Coimbatore days + anytime active windows */
+    spend: true,
   };
 }

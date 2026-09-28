@@ -111,6 +111,16 @@ export function DayAsksCard({
 
   if (!state) return null;
 
+  // Fully done for this slot → vanish completely (no empty card)
+  if (
+    !dismissed &&
+    pending.length === 0 &&
+    (doneCount > 0 || items.length === 0) &&
+    !showDone
+  ) {
+    return null;
+  }
+
   if (dismissed) {
     return (
       <Card style={{ marginBottom: 12, opacity: 0.85 }}>

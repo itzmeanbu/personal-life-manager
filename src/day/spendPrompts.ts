@@ -311,11 +311,16 @@ export async function setDayStatus(
     }
   }
 
-  // Day-order ALWAYS runs 1→6 even on leave/bunk — sequence never freezes.
+  // Day-order only on college-relevant weekdays (not Sat/Sun rest).
   try {
-    const { ensureOrderForPlannedCollege, markDayOrderUsed } = await import('../college/dayOrder');
-    const n = await ensureOrderForPlannedCollege(dateIso);
-    await markDayOrderUsed(dateIso, n);
+    const dow = new Date(dateIso + 'T12:00:00').getDay();
+    const isWeekend = dow === 0 || dow === 6;
+    if (!isWeekend && (order === 'college' || order === 'bunk' || order === 'leave' || order === 'didnt_go')) {
+      const { ensureOrderForPlannedCollege, markDayOrderUsed } = await import('../college/dayOrder');
+      // Leave still advances order on weekdays; weekend never gets an order.
+      const n = await ensureOrderForPlannedCollege(dateIso);
+      await markDayOrderUsed(dateIso, n);
+    }
   } catch {
     /* day-order helpers optional at boot */
   }
