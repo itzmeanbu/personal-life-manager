@@ -6,7 +6,7 @@
 import { getSetting, setSetting } from '../data/settings';
 import { toIsoDate } from '../routine/engine';
 import { effectiveDayStatus, type TomorrowDayOrder } from './spendPrompts';
-import { TIME_SLOTS, liveClassLine, currentTimeSlot } from '../college/timetable';
+import { TIME_SLOTS, currentTimeSlot, resolveCell } from '../college/timetable';
 import { getDayOrderForDate } from '../college/dayOrder';
 import { fireOsNotification } from '../notify/engine';
 
@@ -184,7 +184,7 @@ export async function buildPhaseList(
   list.push({
     id: 'GOOD_MORNING',
     label: 'Good morning',
-    icon: '☀️',
+    icon: '',
     hint: 'Start the day',
     message: pick([
       'Good morning. One step at a time.',
@@ -196,7 +196,7 @@ export async function buildPhaseList(
   list.push({
     id: 'MORNING_ROUTINE',
     label: 'Morning routine',
-    icon: '🧴',
+    icon: '',
     hint: 'Brush, wash, bag — each once',
     message: collegeDay
       ? bus.message
@@ -211,7 +211,7 @@ export async function buildPhaseList(
       list.push({
         id: 'WEEKEND_SPIN',
         label: 'Spin & free time',
-        icon: '🎡',
+        icon: '',
         hint: 'Available until 10:00 PM',
         message: pick([
           'Weekend free time is yours until 10 PM — spin when you want.',
@@ -222,7 +222,7 @@ export async function buildPhaseList(
     list.push({
       id: 'WHATS_TOMORROW',
       label: "What's tomorrow?",
-      icon: '📅',
+      icon: '',
       hint: 'Set next day type',
       message: pick([
         'Lock tomorrow’s type (college / leave / function) before you wind down.',
@@ -232,7 +232,7 @@ export async function buildPhaseList(
     list.push({
       id: 'NIGHT',
       label: 'Night',
-      icon: '🌙',
+      icon: '',
       hint: 'Night checklist + music',
       message: pick(['Good night soon. Finish the night list.', 'Wind down — bath, serum, charge.']),
       music: 'night',
@@ -240,7 +240,7 @@ export async function buildPhaseList(
     list.push({
       id: 'SLEEP',
       label: 'Sleep',
-      icon: '😴',
+      icon: '',
       hint: 'Day ends here',
       message: pick(['Sleep. New day after midnight.', 'Rest well — journey resets tomorrow.']),
     });
@@ -251,7 +251,7 @@ export async function buildPhaseList(
   list.push({
     id: 'LEAVE_HOME',
     label: 'Leave home',
-    icon: '🚪',
+    icon: '',
     hint: `Target bus ~${String(Math.floor(bus.targetBusMin / 60)).padStart(2, '0')}:${String(bus.targetBusMin % 60).padStart(2, '0')}`,
     message: bus.message,
   });
@@ -259,7 +259,7 @@ export async function buildPhaseList(
   list.push({
     id: 'MORNING_BUS',
     label: 'Morning bus',
-    icon: '🚌',
+    icon: '',
     hint: 'Random song + commute',
     message: pick([
       'On the bus — random track from your bus playlists.',
@@ -272,7 +272,7 @@ export async function buildPhaseList(
   list.push({
     id: 'COLLEGE_ARRIVAL',
     label: 'At college',
-    icon: '🏫',
+    icon: '',
     hint: 'Arrival ~9:10',
     message: pick([
       "You're at college. First class is coming up.",
@@ -280,29 +280,34 @@ export async function buildPhaseList(
     ]),
   });
 
-  // One phase per class/break/lunch slot (not a giant static list as the only UI)
   const dayOrder = await getDayOrderForDate(iso);
   for (const slot of TIME_SLOTS) {
-    let subject = slot.label;
-    if (dayOrder && slot.kind === 'class') {
-      subject = liveClassLine(dayOrder, new Date(date));
-      // liveClassLine uses "now" — for building list use slot label + resolve later in UI
-      subject = slot.label;
+    let subjectName = slot.label;
+    if (dayOrder != null && slot.kind === 'class') {
+      const { subject } = resolveCell(dayOrder, slot.id);
+      subjectName = subject?.name ?? 'Free / not listed';
+    } else if (slot.kind === 'break') {
+      subjectName = 'Break';
+    } else if (slot.kind === 'lunch') {
+      subjectName = 'Lunch';
     }
     const msg =
       slot.kind === 'lunch'
-        ? pick(['Lunch window. Log canteen spend if you buy anything.', 'Break for food — canteen log is optional.'])
+        ? pick(['Lunch. Log canteen if you spend.', 'Food window — optional spend log.'])
         : slot.kind === 'break'
-          ? pick(['Short break. Stretch or canteen if you need.', 'Break — next period after this.'])
-          : periodMessage(slot.periodNo, subject, slot.startMin, opts.nowMin);
+          ? pick(['Short break.', 'Break before next class.'])
+          : periodMessage(slot.periodNo, subjectName, slot.startMin, opts.nowMin);
 
     list.push({
       id: 'PERIOD',
       periodSlotId: slot.id,
       periodNo: slot.periodNo,
-      label: slot.kind === 'class' ? `Period ${slot.periodNo}` : slot.label,
-      icon: slot.kind === 'lunch' ? '🍜' : slot.kind === 'break' ? '☕' : '📚',
-      hint: `${formatHm(slot.startMin)}–${formatHm(slot.endMin)}`,
+      label: slot.kind === 'class' ? subjectName : subjectName,
+      icon: '',
+      hint:
+        slot.kind === 'class'
+          ? `Period ${slot.periodNo} · ${formatHm(slot.startMin)}–${formatHm(slot.endMin)}`
+          : `${formatHm(slot.startMin)}–${formatHm(slot.endMin)}`,
       message: msg,
       spend: slot.kind === 'lunch' || slot.kind === 'break',
     });
@@ -311,7 +316,7 @@ export async function buildPhaseList(
   list.push({
     id: 'COLLEGE_DEPARTURE',
     label: 'Leaving college',
-    icon: '🚶',
+    icon: '',
     hint: 'Head to bus',
     message: pick(['College done for today. Evening bus next.', 'Time to leave campus.']),
   });
@@ -319,7 +324,7 @@ export async function buildPhaseList(
   list.push({
     id: 'EVENING_BUS',
     label: 'Evening bus',
-    icon: '🚌',
+    icon: '',
     hint: 'Random song + ride home',
     message: pick(['Evening ride — another random track.', 'Bus home. Music on.']),
     music: 'bus',
@@ -329,7 +334,7 @@ export async function buildPhaseList(
   list.push({
     id: 'HOME',
     label: 'Home',
-    icon: '🏠',
+    icon: '',
     hint: 'Back home',
     message: pick(["You're home. Extracurriculars next, one at a time.", 'Home base. Workout or rest — your list.']),
   });
@@ -337,7 +342,7 @@ export async function buildPhaseList(
   list.push({
     id: 'WORKOUT',
     label: 'Workout',
-    icon: '🏋️',
+    icon: '',
     hint: 'Then guitar',
     message: pick(['Workout time. Get it done.', 'Training block — finish, then guitar.']),
   });
@@ -345,7 +350,7 @@ export async function buildPhaseList(
   list.push({
     id: 'GUITAR',
     label: 'Guitar',
-    icon: '🎸',
+    icon: '',
     hint: 'Practice',
     message: pick(['Guitar practice. One focused block.', 'Strings time — then night routine.']),
   });
@@ -353,7 +358,7 @@ export async function buildPhaseList(
   list.push({
     id: 'WHATS_TOMORROW',
     label: "What's tomorrow?",
-    icon: '📅',
+    icon: '',
     hint: 'Day type + day order if college',
     message: pick([
       "What's tomorrow? College keeps day order; leave does not freeze the week sequence.",
@@ -364,7 +369,7 @@ export async function buildPhaseList(
   list.push({
     id: 'NIGHT',
     label: 'Night',
-    icon: '🌙',
+    icon: '',
     hint: 'Bath, serum, checklist',
     message: pick(['Good night soon 🌙 — night list, then sleep.', 'Wind down. Random night track if you want.']),
     music: 'night',
@@ -373,7 +378,7 @@ export async function buildPhaseList(
   list.push({
     id: 'SLEEP',
     label: 'Sleep',
-    icon: '😴',
+    icon: '',
     hint: 'End of day',
     message: pick(['Sleep. See you tomorrow.', 'Day locked. Rest.']),
   });

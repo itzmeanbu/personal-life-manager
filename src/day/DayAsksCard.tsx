@@ -43,9 +43,12 @@ export function DayAsksCard({
   date = new Date(),
   /** When set, only this slot is shown — no Morning/Leave/Night tab switcher. */
   forceSlot,
+  /** Fires once when every item in the active slot is done. */
+  onAllDone,
 }: {
   date?: Date;
   forceSlot?: AskSlot;
+  onAllDone?: () => void;
 }) {
   const iso = toIsoDate(date);
   const [state, setState] = useState<DayAsksState | null>(null);
@@ -101,6 +104,13 @@ export function DayAsksCard({
       });
     })();
   }, [iso]);
+
+  useEffect(() => {
+    if (!state || !onAllDone) return;
+    if (pending.length === 0 && doneCount > 0 && items.length > 0) {
+      onAllDone();
+    }
+  }, [state, pending.length, doneCount, items.length, onAllDone]);
 
   const dismissed = state?.dismissed?.[slot];
   const slotActive = isSlotActive(slot, appNow(), morningStartMin);

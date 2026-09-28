@@ -92,7 +92,7 @@ export function BusMusicPhase({
         <Card style={{ marginBottom: 12, textAlign: 'center', padding: '24px 16px' }}>
           <div style={{ fontSize: 40, marginBottom: 8 }}>🚌</div>
           <p style={{ fontSize: 'var(--text-lg)', fontWeight: 600, margin: '0 0 8px' }}>
-            Did you enter the bus?
+            Bus
           </p>
           <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', margin: '0 0 16px' }}>
             {direction === 'morning' ? 'Morning ride to college' : 'Evening ride home'}. Yes → random
@@ -100,7 +100,7 @@ export function BusMusicPhase({
           </p>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Button variant="primary" onClick={() => void startMusic()}>
-              Yes — start music
+              Start music
             </Button>
             <Button
               variant="secondary"
@@ -109,10 +109,7 @@ export function BusMusicPhase({
                 setOnBus(true);
               }}
             >
-              Yes, no music
-            </Button>
-            <Button variant="ghost" onClick={() => setAsked(true)}>
-              Not yet — ask again
+              No music
             </Button>
           </div>
           {asked && !onBus && (

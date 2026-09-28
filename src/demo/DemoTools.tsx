@@ -98,7 +98,7 @@ export function DemoToolsPanel() {
         hour: '2-digit',
         minute: '2-digit',
         hour12: true,
-      }) + (isDemoTimeActive() ? ' · DEMO' : ' · live')
+      }) + (isDemoTimeActive() ? '  · override' : '  · real')
     );
     try {
       const nowMin = d.getHours() * 60 + d.getMinutes();
@@ -194,7 +194,7 @@ export function DemoToolsPanel() {
           opacity: 0.85,
         }}
       >
-        DEMO{isDemoTimeActive() ? ' ●' : ''}
+        Clock{isDemoTimeActive() ? ' ●' : ''}
       </button>
     );
   }
@@ -214,7 +214,7 @@ export function DemoToolsPanel() {
       }}
     >
       <Card style={{ border: '2px dashed var(--color-danger, #e5484d)' }}>
-        <strong style={{ color: 'var(--color-danger, #e5484d)' }}>DEMO clock & phases</strong>
+        <strong style={{ color: 'var(--color-danger, #e5484d)' }}>Clock override (dev)</strong>
         <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '4px 0 6px' }}>
           App clock: <strong>{clockLabel}</strong>
           {phaseLabel ? (
