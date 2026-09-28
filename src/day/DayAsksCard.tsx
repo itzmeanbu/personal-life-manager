@@ -105,13 +105,6 @@ export function DayAsksCard({
     })();
   }, [iso]);
 
-  useEffect(() => {
-    if (!state || !onAllDone) return;
-    if (pending.length === 0 && doneCount > 0 && items.length > 0) {
-      onAllDone();
-    }
-  }, [state, pending.length, doneCount, items.length, onAllDone]);
-
   const dismissed = state?.dismissed?.[slot];
   const slotActive = isSlotActive(slot, appNow(), morningStartMin);
   const pending = slotActive || slot !== 'night'
@@ -119,6 +112,13 @@ export function DayAsksCard({
     : [];
   const doneItems = items.filter((i) => state?.done[i.id]);
   const doneCount = doneItems.length;
+
+  useEffect(() => {
+    if (!state || !onAllDone) return;
+    if (pending.length === 0 && doneCount > 0 && items.length > 0) {
+      onAllDone();
+    }
+  }, [state, pending.length, doneCount, items.length, onAllDone]);
 
   if (!state) return null;
 
