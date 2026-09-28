@@ -41,7 +41,6 @@ import {
 } from '../day/journeyState';
 import { getWakeTime } from '../day/spendPrompts';
 import { getDayOrderForDate } from '../college/dayOrder';
-import { scheduleForDayOrder, formatMinHm } from '../college/timetable';
 import { dayAssignmentsRepo } from '../data/repository';
 import { toIsoDate } from '../routine/engine';
 import { AppLogo } from '../appearance/AppLogo';
@@ -258,7 +257,6 @@ export default function Home() {
 
   const timeLabel = (m: number | null) => (m == null ? '' : formatHm12(minToHm(m)));
   const [nowItem, ...laterItems] = timeline;
-  const schedule = dayOrder ? scheduleForDayOrder(dayOrder) : [];
   const isBunk = profile?.systemKey === 'bunk';
   const homeReady =
     !(isBunk || profile?.systemKey === 'stay_out') ||

@@ -16,8 +16,6 @@ import {
 } from './spendPrompts';
 import { getDayOrderForDate, markDayOrderUsed } from '../college/dayOrder';
 import { toIsoDate } from '../routine/engine';
-import { scheduleForDayOrder, formatMinHm } from '../college/timetable';
-import { formatHm12 } from '../lib/timeFormat';
 
 const COLLEGE_OPTIONS: TomorrowDayOrder[] = [
   'college',
@@ -70,7 +68,6 @@ export function CollegePhasePanel({
 
   const attending = status === 'college' || status == null;
   const halfOrBunk = status === 'bunk';
-  const schedule = dayOrder ? scheduleForDayOrder(dayOrder) : [];
 
   return (
     <div>
