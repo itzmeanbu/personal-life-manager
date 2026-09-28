@@ -69,7 +69,7 @@ export async function suggestNextDayOrder(fromIso: string): Promise<number> {
   const last = dates.filter((d) => d <= fromIso).pop();
   if (!last) {
     const saved = await getSetting<{ order: number } | null>(LAST_KEY, null);
-    if (saved && saved.order >= 1 && saved.order <= 6) {
+    if (saved?.order >= 1 && saved.order <= 6) {
       return saved.order >= 6 ? 1 : saved.order + 1;
     }
     return 1;

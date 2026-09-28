@@ -21,41 +21,11 @@ const DAY_NAMES: DayName[] = [
 
 /** English + romanized Korean/Japanese + a bit of Spanish/French — all Latin script. */
 const GREETINGS = {
-  lateNight: [
-    'Still up?',
-    'Annyeong — still awake?',
-    'Oyasumi soon?',
-    'Hola, still here?',
-    'Bonjour from the night',
-  ],
-  morning: [
-    'Good morning',
-    'Annyeonghaseyo',
-    'Ohayo',
-    'Hola',
-    'Bonjour',
-  ],
-  afternoon: [
-    'Good afternoon',
-    'Annyeong',
-    'Konnichiwa',
-    'Hola',
-    'Bonjour',
-  ],
-  evening: [
-    'Good evening',
-    'Annyeonghaseyo',
-    'Konbanwa',
-    'Hola',
-    'Bonsoir',
-  ],
-  night: [
-    'Winding down',
-    'Jal jayo',
-    'Oyasumi',
-    'Buenas noches',
-    'Bonne nuit',
-  ],
+  lateNight: ['Good morning', 'おはようございます', '좋은 아침이에요', 'Bonjour'],
+  morning: ['Good morning', 'おはようございます', '좋은 아침이에요', 'Bonjour'],
+  afternoon: ['Good morning', 'おはようございます', '좋은 아침이에요', 'Bonjour'],
+  evening: ['Good morning', 'おはようございます', '좋은 아침이에요', 'Bonjour'],
+  night: ['Good morning', 'おはようございます', '좋은 아침이에요', 'Bonjour'],
 };
 
 function pickRandom<T>(arr: T[]): T {

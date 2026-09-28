@@ -11,9 +11,31 @@ const SEED_FLAG = 'musicPlaylistsSeeded';
 
 export function seedMusicPlaylistsIfNeeded(): Promise<void> {
   return runSeedOnce(SEED_FLAG, async () => {
-  if (await isFeatureEnabled(SEED_FLAG, false)) return;
   const existing = await musicPlaylistsRepo.list();
+  if (await isFeatureEnabled(SEED_FLAG, false)) {
+    if (!existing.some((p) => !p.deleted && p.systemKey === 'commute')) {
+      await musicPlaylistsRepo.create({
+        name: 'Commute Music',
+        systemKey: 'commute',
+        enabled: true,
+        order: 2,
+        shuffleDefault: true,
+        notes: 'Morning and evening bus rides. Fresh random queue each commute.',
+      });
+    }
+    return;
+  }
   if (existing.length > 0) {
+    if (!existing.some((p) => !p.deleted && p.systemKey === 'commute')) {
+      await musicPlaylistsRepo.create({
+        name: 'Commute Music',
+        systemKey: 'commute',
+        enabled: true,
+        order: Math.max(-1, ...existing.map((p) => p.order)) + 1,
+        shuffleDefault: true,
+        notes: 'Morning and evening bus rides. Fresh random queue each commute.',
+      });
+    }
     await setFeatureEnabled(SEED_FLAG, true);
     return;
   }
@@ -34,6 +56,15 @@ export function seedMusicPlaylistsIfNeeded(): Promise<void> {
     order: 1,
     shuffleDefault: true,
     notes: 'Optional YES/NO prompt before play (configurable).',
+  });
+
+  await musicPlaylistsRepo.create({
+    name: 'Commute Music',
+    systemKey: 'commute',
+    enabled: true,
+    order: 2,
+    shuffleDefault: true,
+    notes: 'Morning and evening bus rides. Fresh random queue each commute.',
   });
 
   await setFeatureEnabled(SEED_FLAG, true);

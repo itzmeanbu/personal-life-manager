@@ -20,7 +20,6 @@ import './settings-control.css';
 
 /** Module control links — private config hub, not an admin CMS. */
 const MODULE_LINKS: { label: string; path: string; hint: string }[] = [
-  { label: '🗓️ Day Brief settings', path: '/day-brief-settings', hint: 'Day types, wake coach, bus music, greetings, notifications' },
   { label: 'Easy setup', path: '/easy-setup', hint: 'One question at a time — your whole lifestyle' },
   { label: 'Quick day setup', path: '/quick-day', hint: 'Wake up at 9? One tap' },
   { label: 'Weekly Schedule', path: '/weekly-schedule', hint: 'Which modules run on which days' },

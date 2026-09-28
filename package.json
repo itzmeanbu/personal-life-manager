@@ -20,8 +20,7 @@
     "@capacitor/geolocation": "^6.0.1",
     "@aparajita/capacitor-secure-storage": "6.0.1",
     "capacitor-native-biometric": "^4.2.1",
-    "@capacitor-community/privacy-screen": "5.2.1",
-    "@capacitor/local-notifications": "^6.1.0"
+    "@capacitor-community/privacy-screen": "5.2.1"
   },
   "devDependencies": {
     "@types/react": "^18.3.5",

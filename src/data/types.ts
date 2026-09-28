@@ -535,7 +535,7 @@ export interface WatchlistItem extends BaseEntity {
 export interface MusicPlaylist extends BaseEntity {
   name: string;
   /** systemKey for seeded playlists; null for user-created. */
-  systemKey?: 'workout' | 'night' | 'english' | 'tamil' | null;
+  systemKey?: 'workout' | 'night' | 'commute' | null;
   enabled: boolean;
   order: number;
   shuffleDefault: boolean;
@@ -751,8 +751,6 @@ export interface DayProfile extends BaseEntity {
     | 'rest'
     | 'stay_out'
     | 'sunday'
-    | 'deep_work'
-    | 'coimbatore_stay'
     | null;
   effects: DayProfileEffects;
 }

@@ -8,9 +8,6 @@ import { LockScreen } from './components/security/LockScreen';
 import { ensureDefaultRoutinesSeeded } from './routine/seed';
 import { seedCollegeCategoriesIfNeeded } from './college/defaults';
 import { seedDayProfilesIfNeeded } from './day/seed';
-import { ensureDayTypeProfiles } from './day/dayTypes';
-import { seedDayBriefMusicIfNeeded } from './music/dayBriefSeed';
-import { initNotifications } from './notifications/scheduler';
 import { seedWorkoutEngineIfNeeded } from './workout/seed';
 import { seedSpinWheelsIfNeeded } from './spin/seed';
 import { ensureWeeklyChoresOnSpin } from './spin/weeklyChores';
@@ -62,15 +59,15 @@ function App() {
     void Promise.all([
       ensureDefaultRoutinesSeeded(),
       seedCollegeCategoriesIfNeeded(),
-      seedDayProfilesIfNeeded().then(() => ensureDayTypeProfiles()),
+      seedDayProfilesIfNeeded(),
       seedWorkoutEngineIfNeeded(),
       seedSpinWheelsIfNeeded().then(() => ensureWeeklyChoresOnSpin()),
       seedEntertainmentCategoriesIfNeeded(),
-      seedMusicPlaylistsIfNeeded().then(() => seedDayBriefMusicIfNeeded()),
+      seedMusicPlaylistsIfNeeded(),
       seedBucketListIfNeeded(),
       seedAchievementsIfNeeded(),
       seedDefaultPhasesIfNeeded().then(() => migrateWeekendJourney()),
-    ]).then(() => cleanupDuplicateSeedData()).then(() => initNotifications());
+    ]).then(() => cleanupDuplicateSeedData());
     void getAppearanceConfig().then((c) => {
       if (c.accentColor) document.documentElement.style.setProperty('--color-accent', c.accentColor);
     });

@@ -1,22 +1,5 @@
 # Changelog
 
-## Build fix (TypeScript strict errors on Render)
-- college/dayOrder.ts: null-guard on saved last-chosen day order
-- day/DayAsksCard.tsx: removed `await` inside sync `.filter()`; day asks are fetched once before filtering (also fixes the morning-check count)
-- day/PeriodBoard.tsx: removed impossible `'unset'` / `'bunk'` / `'bunked'` / `'leave'` comparisons and the unused `TIME_SLOTS` import; class-day logic unchanged
-- home/locationSession.ts: removed unused `stopHomeMonitor` import, renamed unused `reason` param to `_reason`
-- No behaviour or data changes
-
-## Day types + Wake Coach + notifications
-- New day types: Deep Work Day, Coimbatore Stay (date ranges); friendly names for the rest
-- Sunday is no longer special by default (toggle in Day Brief settings)
-- Night picker offers all six types; multi-day picks for Deep Work / Coimbatore Stay
-- Wake button, wake coach (Plan A/B/rush/missed), random multilingual greeting
-- Bus log with fares, English + Tamil travel music (no repeats until all played)
-- Real local notifications (needs npm install + cap sync), per-type toggles
-- 15 built-in backgrounds with adaptive colours
-- See docs/DAY_BRIEF.md
-
 ## Final integration phase
 
 - Added ARCHITECTURE.md, FEATURES.md, README (frontend/backend), root .gitignore

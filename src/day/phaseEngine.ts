@@ -13,7 +13,6 @@ import {
 } from '../data/repository';
 import type { Phase, DayProgress, Routine, CompletionRecord, DayProfile } from '../data/types';
 import { toIsoDate, isRoutineScheduledOnDate, sortRoutines } from '../routine/engine';
-import { getRanges, rangeCovers, getSundayDefault } from './dayTypes';
 
 /** True for free-time / spin style phases that don't need routine rows. */
 export function isActionPhase(phase: Phase): boolean {
@@ -63,50 +62,25 @@ export function isPhaseComplete(
 }
 
 
-/**
- * Active DayProfile for a calendar date.
- * Order: Deep Work range > explicit assignment > Coimbatore Stay range >
- * bunk college status > Sunday (only if "Sunday default" is turned on).
- */
+/** Active DayProfile for a calendar date (assignment > bunk college status > sunday). */
 export async function resolveProfileForDate(date: Date): Promise<DayProfile | null> {
   const iso = toIsoDate(date);
   const dayIndex = date.getDay();
-  const [profiles, assignments, collegeDays, deepRanges, stayRanges, sundayOn] = await Promise.all([
+  const [profiles, assignments, collegeDays] = await Promise.all([
     dayProfilesRepo.list(),
     dayAssignmentsRepo.list(),
     collegeDayStatusesRepo.list(),
-    getRanges('deep_work'),
-    getRanges('coimbatore_stay'),
-    getSundayDefault(),
   ]);
   const list = profiles.filter((p) => !p.deleted && p.enabled);
-
-  // 1) Deep Work overrides everything, even a Recharge Day.
-  if (rangeCovers(deepRanges, iso)) {
-    const dw = list.find((p) => p.systemKey === 'deep_work');
-    if (dw) return dw;
-  }
-
-  // 2) Explicit assignment for the date.
   const assign = assignments.find((a) => a.date === iso && !a.deleted);
   if (assign) {
     return list.find((p) => p.id === assign.profileId) ?? null;
   }
-
-  // 3) Coimbatore Stay range (multi-day).
-  if (rangeCovers(stayRanges, iso)) {
-    const cs = list.find((p) => p.systemKey === 'coimbatore_stay');
-    if (cs) return cs;
-  }
-
-  // 4) Bunked college status.
   const college = collegeDays.find((d) => d.date === iso && !d.deleted);
   if (college?.status === 'bunked') {
     return list.find((p) => p.systemKey === 'bunk') ?? null;
   }
-
-  // 5) Sunday is NOT assumed special unless the user turns it on.
-  if (dayIndex === 0 && sundayOn) {
+  if (dayIndex === 0) {
     return list.find((p) => p.systemKey === 'sunday') ?? null;
   }
   return null;
@@ -121,12 +95,9 @@ export async function resolvePhasesForDate(date: Date): Promise<Phase[]> {
   const effects = profile?.effects;
   const isBunk = profile?.systemKey === 'bunk';
   const isRest = profile?.systemKey === 'rest' || profile?.systemKey === 'holiday' || profile?.systemKey === 'stay_out';
-  const isDeepWork = profile?.systemKey === 'deep_work';
-  const forceSpinDay = (isBunk || isRest) && !isDeepWork;
+  const forceSpinDay = isBunk || isRest;
 
   const routines = await routinesRepo.list();
-  const isoForPhases = toIsoDate(date);
-  const collegeDaysForDate = (await collegeDayStatusesRepo.list()).filter((d) => d.date === isoForPhases);
   const applicable: Phase[] = [];
   for (const phase of sorted) {
     // Profile can disable whole modules (e.g. college on bunk day)
@@ -139,15 +110,6 @@ export async function resolvePhasesForDate(date: Date): Promise<Phase[]> {
     if (isRest && !isBunk && phase.moduleTags?.includes('college')) {
       continue;
     }
-
-    // A weekend day you actually attend college is not a free/spin day.
-    if (isActionPhase(phase) && !isBunk && !isRest) {
-      const st = collegeDaysForDate.find((d) => !d.deleted)?.status;
-      if (st === 'attended') continue;
-    }
-
-    // Deep Work Day: no spin / free-time phase at all.
-    if (isDeepWork && isActionPhase(phase)) continue;
 
     const onActiveDay =
       phase.activeDays.length === 0 || phase.activeDays.includes(dayIndex);

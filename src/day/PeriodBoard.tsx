@@ -7,6 +7,7 @@ import { Button } from '../components/ui/Button';
 import { toIsoDate } from '../routine/engine';
 import { formatHm12 } from '../lib/timeFormat';
 import {
+  TIME_SLOTS,
   currentTimeSlot,
   liveClassLine,
   scheduleForDayOrder,
@@ -20,17 +21,15 @@ import {
 import { getTomorrowOrder, type TomorrowDayOrder } from './spendPrompts';
 import { collegeDayStatusesRepo } from '../data/repository';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { getDemoDate } from '../demo/DemoTools';
 
 function modeLabel(
   order: TomorrowDayOrder | 'attended' | 'bunked' | 'none' | null
 ): string {
-  if (order === 'college' || order === 'attended') return '🎓 Campus Day';
-  if (order === 'bunk' || order === 'bunked') return '🏃 Early Exit Day';
-  if (order === 'event') return '🎉 Campus Event Day';
-  if (order === 'rest') return '🛋️ Recharge Day';
-  if (order === 'deep_work') return '💻 Deep Work Day';
+  if (order === 'college' || order === 'attended') return '🎓 College day';
+  if (order === 'bunk' || order === 'bunked') return '🏃 Bunk day';
   if (order === 'leave') return '🏠 Leave / holiday';
-  if (order === 'coimbatore_stay') return '🌆 Coimbatore Stay';
+  if (order === 'coimbatore_stay') return '🌆 Coimbatore stay';
   return 'Mode not set';
 }
 
@@ -62,7 +61,7 @@ export function PeriodBoard({ date = new Date() }: { date?: Date }) {
   }, [iso]);
 
   void tick;
-  const slot = currentTimeSlot(new Date());
+  const slot = currentTimeSlot(getDemoDate());
 
   const statusFromCollege =
     college?.status === 'bunked'
@@ -73,11 +72,15 @@ export function PeriodBoard({ date = new Date() }: { date?: Date }) {
   const mode =
     fromNight && fromNight !== 'unset' ? fromNight : statusFromCollege;
 
-  // 'unset' is already filtered out of `mode`; only these count as a class day.
   const isCollegeDay =
-    mode === 'college' || mode === 'attended' || mode === null;
+    mode === 'college' ||
+    mode === 'attended' ||
+    mode === null ||
+    mode === 'unset' ||
+    (mode !== 'bunk' && mode !== 'bunked' && mode !== 'leave' && mode !== 'coimbatore_stay');
 
-  const showTimetable = isCollegeDay;
+  const showTimetable =
+    isCollegeDay && mode !== 'bunk' && mode !== 'bunked' && mode !== 'leave';
 
   const pickOrder = async (n: number) => {
     await setDayOrderForDate(iso, n);

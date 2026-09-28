@@ -164,6 +164,3 @@
   text-align: center;
   letter-spacing: 4px;
 }
-
-/* Adaptive tint from the daily background (set by appearance/adaptiveColor.ts) */
-.card { background-image: linear-gradient(var(--bg-tint, transparent), var(--bg-tint, transparent)); }

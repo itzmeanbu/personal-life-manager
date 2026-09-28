@@ -2,7 +2,7 @@
  * DEMO TOOLS — remove this entire file (and its import) before release.
  * Isolated so deletion is a single-file remove.
  */
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 
@@ -47,25 +47,20 @@ export function setDemoTimeOfDay(hour: number | null, minute = 0) {
   listeners.forEach((l) => l());
 }
 
-export function setDemoDateTime(value: string | null) {
-  if (!value) {
-    demoDayOverride = null;
-    demoTimeOverride = null;
-    listeners.forEach((l) => l());
-    return;
-  }
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return;
-  demoDayOverride = new Date(d);
-  demoTimeOverride = { hour: d.getHours(), minute: d.getMinutes() };
+export function setDemoDateTime(dateValue: string, timeValue: string) {
+  const [y, m, d] = dateValue.split('-').map(Number);
+  const [hour, minute] = timeValue.split(':').map(Number);
+  if (!y || !m || !d || Number.isNaN(hour) || Number.isNaN(minute)) return;
+  demoDayOverride = new Date(y, m - 1, d);
+  demoTimeOverride = { hour, minute };
   listeners.forEach((l) => l());
 }
 
 export function advanceDemoMinutes(minutes: number) {
-  const d = getDemoDate();
-  d.setMinutes(d.getMinutes() + minutes);
-  demoDayOverride = new Date(d);
-  demoTimeOverride = { hour: d.getHours(), minute: d.getMinutes() };
+  const next = getDemoDate();
+  next.setMinutes(next.getMinutes() + minutes);
+  demoDayOverride = new Date(next.getFullYear(), next.getMonth(), next.getDate());
+  demoTimeOverride = { hour: next.getHours(), minute: next.getMinutes() };
   listeners.forEach((l) => l());
 }
 
@@ -91,9 +86,14 @@ export function DemoToolsPanel() {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
   const [selectedTime, setSelectedTime] = useState<number | null>(null);
-  const [customDateTime, setCustomDateTime] = useState('');
-  const demoNow = useMemo(() => getDemoDate(), [open, selected, selectedTime, customDateTime]);
-  const localDateTimeValue = `${demoNow.getFullYear()}-${String(demoNow.getMonth() + 1).padStart(2, '0')}-${String(demoNow.getDate()).padStart(2, '0')}T${String(demoNow.getHours()).padStart(2, '0')}:${String(demoNow.getMinutes()).padStart(2, '0')}`;
+  const [fakeDate, setFakeDate] = useState(() => {
+    const d = getDemoDate();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
+  const [fakeTime, setFakeTime] = useState(() => {
+    const d = getDemoDate();
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  });
 
   if (!open) {
     return (
@@ -138,6 +138,29 @@ export function DemoToolsPanel() {
         <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '4px 0 8px' }}>
           Preview a different day / skip timers. Isolated in src/demo/DemoTools.tsx.
         </p>
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ fontSize: 12, marginBottom: 4 }}>Fake date + exact time:</div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <input
+              type="date"
+              value={fakeDate}
+              onChange={(e) => setFakeDate(e.target.value)}
+              style={{ flex: 1, minWidth: 0, padding: '7px 8px', borderRadius: 7, border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'inherit' }}
+            />
+            <input
+              type="time"
+              value={fakeTime}
+              onChange={(e) => setFakeTime(e.target.value)}
+              style={{ width: 110, padding: '7px 8px', borderRadius: 7, border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'inherit' }}
+            />
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+            <Button variant="primary" onClick={() => setDemoDateTime(fakeDate, fakeTime)}>Set fake clock</Button>
+            <Button variant="secondary" onClick={() => advanceDemoMinutes(30)}>+30m</Button>
+            <Button variant="secondary" onClick={() => advanceDemoMinutes(60)}>+1h</Button>
+            <Button variant="secondary" onClick={() => advanceDemoMinutes(240)}>+4h</Button>
+          </div>
+        </div>
         <div style={{ marginBottom: 8 }}>
           <div style={{ fontSize: 12, marginBottom: 4 }}>Preview day of week:</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
@@ -157,7 +180,12 @@ export function DemoToolsPanel() {
               variant="ghost"
               onClick={() => {
                 setSelected(null);
+                setSelectedTime(null);
                 setDemoDayOfWeek(null);
+                setDemoTimeOfDay(null);
+                const d = new Date();
+                setFakeDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+                setFakeTime(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
               }}
             >
               Real today
@@ -191,26 +219,7 @@ export function DemoToolsPanel() {
           </div>
         </div>
         <div style={{ marginBottom: 8 }}>
-          <div style={{ fontSize: 12, marginBottom: 4 }}>Fake exact date + time:</div>
-          <input
-            type="datetime-local"
-            value={customDateTime || localDateTimeValue}
-            onChange={(e) => {
-              setCustomDateTime(e.target.value);
-              setDemoDateTime(e.target.value);
-            }}
-            style={{ width: '100%', padding: 8, marginBottom: 6, boxSizing: 'border-box' }}
-          />
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-            {[30, 60, 240].map((m) => (
-              <Button key={m} variant="secondary" onClick={() => advanceDemoMinutes(m)}>+{m / 60 === 1 ? '1 hour' : m / 60 === 4 ? '4 hours' : '30 min'}</Button>
-            ))}
-            <Button variant="ghost" onClick={() => { setCustomDateTime(''); setDemoDateTime(null); }}>Real time</Button>
-          </div>
-        </div>
-        <div style={{ marginBottom: 8 }}>
           <Button variant="secondary" onClick={() => requestForceCompleteTimer()}>
-
             Complete timer → today history (full time)
           </Button>
         </div>

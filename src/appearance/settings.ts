@@ -11,13 +11,6 @@ export interface AppearanceConfig {
   backgroundHistory: string[];
   todayBackgroundKey: string | null;
   todayBackgroundDate: string | null;
-  /** Use the 15 built-in scenes when no photos are imported (or always, if forced). */
-  builtinBackgroundsEnabled: boolean;
-  forceBuiltinBackgrounds: boolean;
-  lastBuiltinId: string | null;
-  todayBuiltinId: string | null;
-  /** Adapt accent + card tint to the current background. */
-  adaptiveColors: boolean;
 }
 
 export const APPEARANCE_CONFIG_KEY = 'appearance.config';
@@ -25,7 +18,7 @@ export const APPEARANCE_CONFIG_KEY = 'appearance.config';
 export const DEFAULT_APPEARANCE: AppearanceConfig = {
   accentColor: '',
   colorMode: 'dark',
-  dailyBackgroundEnabled: true,
+  dailyBackgroundEnabled: false,
   randomBackgroundEnabled: true,
   specialDayBackgroundEnabled: true,
   fixedBackgroundKey: null,
@@ -33,11 +26,6 @@ export const DEFAULT_APPEARANCE: AppearanceConfig = {
   backgroundHistory: [],
   todayBackgroundKey: null,
   todayBackgroundDate: null,
-  builtinBackgroundsEnabled: true,
-  forceBuiltinBackgrounds: false,
-  lastBuiltinId: null,
-  todayBuiltinId: null,
-  adaptiveColors: true,
 };
 
 export async function getAppearanceConfig(): Promise<AppearanceConfig> {
