@@ -149,14 +149,6 @@ const WEEKEND_FLOW: JourneyPhaseId[] = [
   'NIGHT',
 ];
 
-/** Rest-at-home weekday (optional evening activities). */
-const HOME_FLOW: JourneyPhaseId[] = [
-  'MORNING_BEFORE_LEAVING',
-  'HOME_EVENING',
-  'WHATS_TOMORROW',
-  'NIGHT',
-];
-
 export function flowForDay(opts: {
   isWeekend: boolean;
   dayStatus: TomorrowDayOrder | null;

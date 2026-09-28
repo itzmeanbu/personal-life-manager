@@ -17,7 +17,6 @@ import {
   pickEncouragement,
   consequenceForTitle,
   isPastBunkSpinWindow,
-  BUNK_SPIN_END_HM,
 } from '../home/encourage';
 import { MealPrompt } from '../day/MealPrompt';
 import { LateWakeCard } from '../day/LateWakeCard';
@@ -50,7 +49,7 @@ import { AppLogo } from '../appearance/AppLogo';
 import { useHomeArrival } from '../home/HomeArrivalProvider';
 import { useActiveDayProfile } from '../day/hooks';
 import { formatHm12 } from '../lib/timeFormat';
-import { buildTimeline, phaseDayPart, phaseHeading, minToHm } from '../day/timeline';
+import { buildTimeline, phaseDayPart, minToHm } from '../day/timeline';
 import { WAKE_LOGGED_EVENT } from '../day/wakeGate';
 import { useNow } from '../hooks/useNow';
 import '../day/day.css';
