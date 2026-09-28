@@ -1,593 +1,249 @@
-/**
- * Day Journey — current phase only. Completed checklist items vanish.
- * Spin phase gets a big CTA. End-of-day asks what tomorrow looks like.
- */
-import { useCallback, useMemo, useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Card } from '../components/ui/Card';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { Button } from '../components/ui/Button';
 import { useToday } from '../hooks/useToday';
-import { useDayProgress, useAllDayProfiles } from '../day/hooks';
-import { useDailyAgenda } from '../routine/hooks';
-import { deriveStatus, STATUS_LABELS } from '../routine/engine';
-import { markPhaseComplete, isActionPhase } from '../day/phaseEngine';
-import { forceRebuildToday } from '../day/migrateWeekend';
-import {
-  pickEncouragement,
-  consequenceForTitle,
-  isPastBunkSpinWindow,
-  BUNK_SPIN_END_HM,
-} from '../home/encourage';
-import { MealPrompt } from '../day/MealPrompt';
-import { DayAsksCard } from '../day/DayAsksCard';
-import { getContinueCandidates } from '../entertainment/continue';
-import { dayAssignmentsRepo } from '../data/repository';
-import { toIsoDate } from '../routine/engine';
-import { AppLogo } from '../appearance/AppLogo';
-import { useHomeArrival } from '../home/HomeArrivalProvider';
-import { useActiveDayProfile } from '../day/hooks';
+import { toIsoDate, isRoutineScheduledOnDate, sortRoutines } from '../routine/engine';
+import { completionRecordsRepo, collegeDayStatusesRepo, moneyTransactionsRepo, routinesRepo } from '../data/repository';
+import type { CompletionRecord, Routine } from '../data/types';
+import { getWakeTime, logWake } from '../day/wakeCoach';
+import { getTravel, logTravel, type TravelState } from '../day/travel';
+import { startTravelMusic, stopTravelMusic } from '../music/travelMusic';
+import { musicPlayer } from '../music/player';
+import { getDayOrderForDate } from '../college/dayOrder';
+import { currentTimeSlot, formatMinHm, resolveCell } from '../college/timetable';
+import { greetingForDate, greetingLine, type Greeting } from '../day/greeting';
 import { formatHm12 } from '../lib/timeFormat';
-import '../day/day.css';
+import { getDemoDate, subscribeDemoDay } from '../demo/DemoTools';
+import './journey.css';
+
+const MORNING_END = 6 * 60 + 15;
+const COLLEGE_START = 9 * 60 + 10;
+const COLLEGE_END = 16 * 60 + 30;
+const WORKOUT_CANCEL_AFTER = 19 * 60 + 30;
+
+function mins(d: Date) { return d.getHours() * 60 + d.getMinutes(); }
+function hmMin(hm?: string) { if (!hm) return 9999; const [h, m] = hm.split(':').map(Number); return h * 60 + m; }
+function fmt(min: number) { return formatHm12(formatMinHm(min)); }
+
+function Page({ children }: { children: React.ReactNode }) {
+  return <main className="journey-page">{children}</main>;
+}
+
+function Phase({ eyebrow, title, subtitle, children }: { eyebrow?: string; title: string; subtitle?: string; children?: React.ReactNode }) {
+  return (
+    <section className="journey-phase">
+      <div className="journey-phase__inner">
+        {eyebrow && <div className="journey-eyebrow">{eyebrow}</div>}
+        <h1>{title}</h1>
+        {subtitle && <p className="journey-subtitle">{subtitle}</p>}
+        {children && <div className="journey-actions">{children}</div>}
+      </div>
+    </section>
+  );
+}
+
+function Expense({ label, date, category, compact = false }: { label: string; date: string; category: string; compact?: boolean }) {
+  const [amount, setAmount] = useState('');
+  const save = async () => {
+    const n = Number(amount);
+    if (!n || n <= 0) return;
+    await moneyTransactionsRepo.create({ date, type: 'expense', amount: n, category, note: `Day Journey · ${label}`, paidBy: 'self' });
+    setAmount('');
+  };
+  return (
+    <div className={`journey-expense${compact ? ' journey-expense--compact' : ''}`}>
+      <span>{label}</span>
+      <input value={amount} onChange={e => setAmount(e.target.value)} inputMode="decimal" type="number" placeholder="₹" />
+      <Button variant="secondary" onClick={save}>Save</Button>
+    </div>
+  );
+}
+
+function TravelPhase({ date, iso, state, setState, home }: { date: Date; iso: string; state: TravelState; setState: (s: TravelState) => void; home: boolean }) {
+  const [fare, setFare] = useState('');
+  const [track, setTrack] = useState(musicPlayer.current);
+  const [playing, setPlaying] = useState(musicPlayer.playing);
+
+  useEffect(() => musicPlayer.subscribe(() => { setTrack(musicPlayer.current); setPlaying(musicPlayer.playing); }), []);
+
+  const kind = home ? 'boarded_back' : 'boarded_out';
+  const hasBoarded = state.events.some(e => e.kind === kind);
+  const reached = state.events.some(e => e.kind === (home ? 'reached_home' : 'reached_college'));
+
+  const board = async () => {
+    const n = Number(fare);
+    const next = await logTravel(iso, kind, n > 0 ? n : undefined);
+    setState(next);
+    const r = await startTravelMusic(`${iso}:${kind}:${Date.now()}`);
+    if (!r.ok) window.setTimeout(() => musicPlayer.play(), 0);
+  };
+
+  const arrive = async () => {
+    const reachedKind = home ? 'reached_home' : 'reached_college';
+    const next = await logTravel(iso, reachedKind);
+    setState(next);
+    stopTravelMusic();
+  };
+
+  if (!hasBoarded) {
+    return <Phase eyebrow={home ? 'HOME COMMUTE' : 'MORNING COMMUTE'} title={home ? 'Board the bus home' : 'Board the bus'} subtitle={home ? 'College is over. This is your return commute phase.' : 'Once you board, this full-screen bus phase takes over.'}>
+      <div className="journey-time">{formatHm12(formatMinHm(mins(date)))}</div>
+      <input className="journey-fare" value={fare} onChange={e => setFare(e.target.value)} type="number" inputMode="decimal" placeholder="Commute expense ₹" />
+      <Button onClick={board}>🚌 I boarded the bus</Button>
+    </Phase>;
+  }
+
+  return <Phase eyebrow={home ? 'GOING HOME' : 'GOING TO COLLEGE'} title="Bus phase" subtitle="Music stays in this phase. It starts with a fresh random queue and avoids repeats until the library cycle is used.">
+    <div className="journey-now-card">
+      <div className="journey-track-label">NOW PLAYING</div>
+      <strong>{track?.title ?? 'Your travel playlist'}</strong>
+      <span>{track ? 'Local offline track' : 'Import songs in Music to start playback'}</span>
+    </div>
+    <div className="journey-row">
+      <Button variant="secondary" onClick={() => musicPlayer.toggle()}>{playing ? 'Pause' : 'Play'}</Button>
+      <Button variant="secondary" onClick={() => musicPlayer.next()}>Next random →</Button>
+    </div>
+    <div className="journey-progress">{state.events.filter(e => e.kind.includes(home ? 'back' : 'out') || e.kind.includes(home ? 'home' : 'college')).length > 0 ? 'Commute logged' : 'Commute active'}</div>
+    {!reached && <Button onClick={arrive}>{home ? '🏠 I reached home' : '🏫 I reached class / got off bus'}</Button>}
+  </Phase>;
+}
+
+function RoutinePhase({ routine, iso, onDone, eyebrow = 'ONE PHASE' }: { routine: Routine; iso: string; onDone: () => void; eyebrow?: string }) {
+  const complete = async (status: CompletionRecord['status']) => {
+    const existing = (await completionRecordsRepo.list()).find(c => c.date === iso && c.refType === 'routine' && c.refId === routine.id && !c.deleted);
+    if (existing) await completionRecordsRepo.update(existing.id, { status });
+    else await completionRecordsRepo.create({ date: iso, refType: 'routine', refId: routine.id, status });
+    onDone();
+  };
+  return <Phase eyebrow={eyebrow} title={routine.title} subtitle={`${routine.category}${routine.time ? ` · ${formatHm12(routine.time)}` : ''}${routine.durationMinutes ? ` · ${routine.durationMinutes} min` : ''}`}>
+    {routine.notes && <p className="journey-note">{routine.notes}</p>}
+    <Button onClick={() => complete('done')}>✓ Finished</Button>
+    <Button variant="ghost" onClick={() => complete('skipped')}>Skip this phase</Button>
+  </Phase>;
+}
+
+function CollegePhase({ date, iso, dayOrder, onBunk }: { date: Date; iso: string; dayOrder: number; onBunk: () => void }) {
+  const [expenseOpen, setExpenseOpen] = useState(false);
+  const nowMin = mins(date);
+  const slot = currentTimeSlot(date);
+  const isGap = nowMin >= 14 * 60 + 30 && nowMin < 14 * 60 + 35;
+  const active = slot ?? (isGap ? { id: 'gap', periodNo: null, label: 'Interval', startMin: 14 * 60 + 30, endMin: 14 * 60 + 35, kind: 'break' as const } : null);
+  const subject = active && active.id !== 'gap' ? resolveCell(dayOrder, active.id) : null;
+  const title = active?.kind === 'lunch' ? 'Lunch' : active?.kind === 'break' ? 'Interval' : subject?.subject?.name ?? active?.label ?? 'College';
+  const detail = active?.kind === 'class' ? `${active.label} · ${fmt(active.startMin)} – ${fmt(active.endMin)}` : active ? `${fmt(active.startMin)} – ${fmt(active.endMin)}` : 'College time';
+  return <Phase eyebrow="COLLEGE PHASE" title={title} subtitle={detail}>
+    {active?.kind === 'class' && subject?.cell?.isLab && <div className="journey-pill">LAB{subject.cell.room ? ` · ${subject.cell.room}` : ''}</div>}
+    {active?.kind === 'break' && <Button variant="secondary" onClick={() => setExpenseOpen(v => !v)}>💸 Log interval expense</Button>}
+    {active?.kind === 'lunch' && <Button variant="secondary" onClick={() => setExpenseOpen(v => !v)}>🍱 Log lunch expense</Button>}
+    {expenseOpen && <Expense label={active?.kind === 'lunch' ? 'Lunch' : 'Interval'} date={iso} category={active?.kind === 'lunch' ? 'food' : 'canteen'} />}
+    <Button variant="ghost" onClick={onBunk}>🏃 Bunk / leave college now</Button>
+  </Phase>;
+}
 
 export default function Home() {
   const today = useToday();
-  const {
-    progress,
-    loading,
-    refresh,
-    currentPhase,
-    phaseRoutines,
-    completions,
-    isComplete,
-    position,
-  } = useDayProgress(today.date);
+  const [tick, setTick] = useState(0);
+  const [greeting, setGreeting] = useState<Greeting | null>(null);
+  const [travel, setTravel] = useState<TravelState>({ date: toIsoDate(today.date), events: [] });
+  const [dayOrder, setDayOrder] = useState<number | null>(null);
+  const [wakeAt, setWakeAt] = useState<Date | null>(null);
 
-  const { setStatus, clearStatus } = useDailyAgenda(today.date);
-  const profiles = useAllDayProfiles();
-  const { profile } = useActiveDayProfile(today.date);
-  const homeArrival = useHomeArrival();
-  const nudgeText = useMemo(() => pickEncouragement(today.isWeekend ? 'weekend' : 'general'), [today.isWeekend]);
-  const continueWatch = useLiveQuery(() => getContinueCandidates(2), [], []);
-  const [savingTomorrow, setSavingTomorrow] = useState(false);
-  const [tomorrowSaved, setTomorrowSaved] = useState<string | null>(null);
-  const [skipRoast, setSkipRoast] = useState<string | null>(null);
+  useEffect(() => {
+    const unsub = subscribeDemoDay(() => setTick(v => v + 1));
+    const timer = window.setInterval(() => setTick(v => v + 1), 1000);
+    return () => { unsub(); window.clearInterval(timer); };
+  }, []);
+  const date = getDemoDate();
+  const iso = toIsoDate(date);
+  const minute = mins(date);
+  const status = useLiveQuery(async () => (await collegeDayStatusesRepo.list()).find(x => x.date === iso && !x.deleted) ?? null, [iso], null);
+  const routines = useLiveQuery(async () => sortRoutines((await routinesRepo.list()).filter(r => !r.deleted && isRoutineScheduledOnDate(r, date))), [iso, tick], []);
+  const completions = useLiveQuery(async () => (await completionRecordsRepo.list()).filter(c => c.date === iso && !c.deleted), [iso, tick], []);
 
-  const tomorrowIso = useMemo(() => {
-    const d = new Date(today.date);
-    d.setDate(d.getDate() + 1);
-    return toIsoDate(d);
-  }, [today.date]);
-
-  const existingTomorrow = useLiveQuery(
-    async () => {
-      const rows = await dayAssignmentsRepo.list();
-      return rows.find((a) => a.date === tomorrowIso && !a.deleted) ?? null;
-    },
-    [tomorrowIso],
-    null
-  );
-
-  // Only show incomplete items — done ones vanish
-  const visibleRoutines = useMemo(() => {
-    return phaseRoutines.filter((r) => {
-      const status = deriveStatus(
-        r,
-        progress?.date ?? '',
-        completions.find((c) => c.refType === 'routine' && c.refId === r.id),
-        new Date()
-      );
-      return status !== 'done' && status !== 'skipped';
+  useEffect(() => {
+    let alive = true;
+    void Promise.all([greetingForDate(iso), getTravel(iso), getDayOrderForDate(iso), getWakeTime(iso)]).then(([g, t, d, w]) => {
+      if (!alive) return;
+      setGreeting(g); setTravel(t); setDayOrder(d); setWakeAt(w);
     });
-  }, [phaseRoutines, completions, progress]);
+    return () => { alive = false; };
+  }, [iso, tick]);
 
-  const doneCount = phaseRoutines.length - visibleRoutines.length;
-  const totalCount = phaseRoutines.length;
-  const pct =
-    totalCount === 0 ? 0 : Math.round((doneCount / totalCount) * 100);
+  const refreshTravel = useCallback(async (s: TravelState) => setTravel(s), []);
+  const doneIds = useMemo(() => new Set(completions.map(c => c.refType === 'routine' && (c.status === 'done' || c.status === 'skipped') ? c.refId : '')), [completions]);
+  const scheduled = useMemo(() => routines.filter(r => !doneIds.has(r.id)), [routines, doneIds]);
 
-  const toggle = useCallback(
-    async (routineId: string, currentlyDone: boolean) => {
-      if (currentlyDone) {
-        await clearStatus(routineId);
-      } else {
-        await setStatus(routineId, 'done');
-      }
-      await refresh();
-    },
-    [setStatus, clearStatus, refresh]
-  );
+  const wakeDone = !!wakeAt;
 
-  const skipItem = useCallback(
-    async (routineId: string, title: string) => {
-      await setStatus(routineId, 'skipped');
-      setSkipRoast(consequenceForTitle(title));
-      await refresh();
-    },
-    [setStatus, refresh]
-  );
+  const morningRoutines = scheduled.filter(r => {
+    const t = hmMin(r.time);
+    return t < MORNING_END && !/wake up/i.test(r.title) && !r.moduleTag && !['Rest'].includes(r.category) && !/sleep/i.test(r.title);
+  });
+  const postHomeRoutines = scheduled.filter(r => {
+    const t = hmMin(r.time);
+    return t >= 19 * 60 && !/sleep/i.test(r.title) && (r.moduleTag === 'workout' || r.moduleTag === 'guitar' || t >= 20 * 60);
+  });
+  const nightRoutines = scheduled.filter(r => /sleep/i.test(r.title) || r.category === 'Rest');
 
-  const finishSpinPhase = useCallback(async () => {
-    if (!currentPhase || !progress) return;
-    await markPhaseComplete(today.date, currentPhase.id);
-    await refresh();
-  }, [currentPhase, progress, today.date, refresh]);
+  const boardedOut = travel.events.some(e => e.kind === 'boarded_out');
+  const reachedCollege = travel.events.some(e => e.kind === 'reached_college');
+  const boardedBack = travel.events.some(e => e.kind === 'boarded_back');
+  const reachedHome = travel.events.some(e => e.kind === 'reached_home');
+  const bunked = status?.status === 'bunked';
 
-  const pickTomorrow = useCallback(
-    async (profileId: string, name: string) => {
-      setSavingTomorrow(true);
-      try {
-        if (existingTomorrow) {
-          await dayAssignmentsRepo.update(existingTomorrow.id, { profileId });
-        } else {
-          await dayAssignmentsRepo.create({
-            date: tomorrowIso,
-            profileId,
-            checklistDone: [],
-            notes: '',
-          });
-        }
-        // Clear any pre-built progress for tomorrow so phases rebuild under new profile
-        const { dayProgressRepo } = await import('../data/repository');
-        const rows = await dayProgressRepo.list();
-        const tp = rows.find((d) => d.date === tomorrowIso && !d.deleted);
-        if (tp) {
-          await dayProgressRepo.update(tp.id, {
-            phaseIdsToday: [],
-            currentPhaseId: null,
-            completedPhaseIds: [],
-          });
-        }
-        setTomorrowSaved(name);
-      } finally {
-        setSavingTomorrow(false);
-      }
-    },
-    [existingTomorrow, tomorrowIso]
-  );
+  const markWake = async () => {
+    await logWake(iso, date);
+    setTick(v => v + 1);
+  };
 
-  if (loading && !progress) {
-    return (
-      <div className="page-shell">
-        <div className="page-shell__content" style={{ padding: 24 }}>
-          Loading today’s journey…
-        </div>
-      </div>
-    );
+  const markBunk = async () => {
+    const existing = status;
+    if (existing) await collegeDayStatusesRepo.update(existing.id, { status: 'bunked', homeArrivalTime: '16:30' });
+    else await collegeDayStatusesRepo.create({ date: iso, status: 'bunked', homeArrivalTime: '16:30' });
+    setTick(v => v + 1);
+  };
+
+  if (!greeting) return <Page><div className="journey-loading">Loading your day…</div></Page>;
+
+  if (!wakeDone && !bunked && minute < 24 * 60) {
+    return <Page><div className="journey-welcome"><div className="journey-language">{greeting.language}</div><div className="journey-greeting">{greetingLine(greeting, '')}</div><div className="journey-date">{date.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}</div><Button onClick={markWake}>I’m awake · {formatHm12(formatMinHm(minute))}</Button></div></Page>;
   }
 
-  const noPhases =
-    !progress ||
-    progress.phaseIdsToday.length === 0 ||
-    (!currentPhase && (progress.completedPhaseIds?.length ?? 0) === 0);
+  // Morning: every routine is its own screen, then the bus takes over.
+  if (!boardedOut && !bunked && morningRoutines.length > 0) {
+    return <Page><RoutinePhase routine={morningRoutines[0]} iso={iso} eyebrow="MORNING ROUTINE" onDone={() => setTick(v => v + 1)} /></Page>;
+  }
+  if (!boardedOut && !bunked && minute < COLLEGE_START) {
+    return <Page><Phase eyebrow="MORNING COMMUTE" title="Ready for the bus?" subtitle={minute <= 6 * 60 + 15 ? 'Your first bus is 6:15 AM. If you miss it, the 6:50 AM bus is the fallback.' : 'You are past the first bus. Use the fallback if you still can.'}><div className="journey-time">Wake → {formatHm12(formatMinHm(minute))}</div><Button onClick={async () => { const next = await logTravel(iso, 'boarded_out'); setTravel(next); await startTravelMusic(`${iso}:boarded_out:${Date.now()}`); }}>🚌 Board 6:15 / 6:50 bus</Button></Phase></Page>;
+  }
+  if (boardedOut && !reachedCollege) return <Page><TravelPhase date={date} iso={iso} state={travel} setState={refreshTravel} home={false} /></Page>;
 
-  if (noPhases && !loading) {
-    return (
-      <div className="page-shell day-journey">
-        <header className="page-shell__header" style={{ flexDirection: 'column', gap: 4 }}>
-          <AppLogo size={36} />
-          <span style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)' }}>
-            {today.greeting}
-          </span>
-          <h1 className="page-shell__title" style={{ fontSize: 'var(--text-2xl)' }}>
-            {today.dayName}
-          </h1>
-        </header>
-        <div className="page-shell__content">
-          <Card style={{ textAlign: 'center', padding: '24px 16px', marginBottom: 16 }}>
-            <div style={{ fontSize: 40, marginBottom: 8 }}>{today.isWeekend ? '🎡' : '☀️'}</div>
-            <p style={{ fontWeight: 600, margin: '0 0 8px' }}>
-              {today.isWeekend ? 'Weekend journey not loaded yet' : 'No phases for today yet'}
-            </p>
-            <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', margin: '0 0 16px' }}>
-              Facial / morning stuff runs every day. Sat/Sun also get Spin & Free Time after morning.
-              Tap to load today.
-            </p>
-            <Button
-              variant="primary"
-              onClick={async () => {
-                await forceRebuildToday(today.date);
-                await refresh();
-              }}
-            >
-              Load today's journey
-            </Button>
-          </Card>
-          {today.isWeekend && (
-            <Card style={{ textAlign: 'center' }}>
-              <p style={{ margin: '0 0 12px' }}>Or jump straight to the wheel</p>
-              <Link to="/spin">
-                <Button variant="secondary">Open Spin Wheel</Button>
-              </Link>
-            </Card>
-          )}
-        </div>
-      </div>
-    );
+  // College / bunk. Timetable advances naturally with the clock; past phases vanish.
+  if (!bunked && !reachedHome && (reachedCollege || minute >= COLLEGE_START) && !boardedBack && minute < COLLEGE_END) {
+    if (!dayOrder) return <Page><Phase eyebrow="COLLEGE" title="Set today's day order" subtitle="Choose Day Order 1–6 once. The timetable then controls each college phase."><Link to="/college"><Button>Open College →</Button></Link></Phase></Page>;
+    return <Page><CollegePhase date={date} iso={iso} dayOrder={dayOrder} onBunk={markBunk} /></Page>;
   }
 
-  /* -------------------- ALL DONE -------------------- */
-  if (isComplete || !currentPhase) {
-    const quickProfiles = profiles.filter((p) => p.enabled).slice(0, 8);
-    const tileHint = (key?: string | null) => {
-      switch (key) {
-        case 'bunk': return 'College day · home early · free time · then resume';
-        case 'rest': return 'Spin wheel day · no college';
-        case 'holiday': return 'Off day · free time';
-        case 'hackathon': return 'Build mode · sleep optional';
-        case 'exam': return 'Focus · light day';
-        case 'normal': return 'College day';
-        case 'sunday': return 'Reset & plan';
-        default: return '';
-      }
-    };
-    return (
-      <div className="page-shell day-journey">
-        <header className="page-shell__header" style={{ flexDirection: 'column', gap: 4 }}>
-          <AppLogo size={36} />
-          <span style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)' }}>
-            {today.greeting}
-          </span>
-          <h1 className="page-shell__title" style={{ fontSize: 'var(--text-2xl)' }}>
-            All done for today
-          </h1>
-        </header>
-        <div className="page-shell__content">
-          <Card style={{ marginBottom: 16 }}>
-            <p style={{ fontSize: 'var(--text-lg)', margin: 0 }}>
-              🎉 You’ve finished every phase for {today.dayName}.
-            </p>
-            <p style={{ color: 'var(--color-text-secondary)', marginTop: 8, marginBottom: 0 }}>
-              Rest well. A new journey starts at midnight.
-            </p>
-            <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {today.isWeekend && (
-                <Link to="/spin">
-                  <Button variant="secondary">Open Spin Wheel</Button>
-                </Link>
-              )}
-              <Button
-                variant="ghost"
-                onClick={async () => {
-                  await forceRebuildToday(today.date);
-                  await refresh();
-                }}
-              >
-                Restart today's journey
-              </Button>
-            </div>
-          </Card>
-
-          <h2 style={{ fontSize: 'var(--text-base)', margin: '0 0 8px' }}>
-            What’s tomorrow?
-          </h2>
-          <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', marginTop: 0 }}>
-            One tap — no menus. Change anytime in Special Days.
-          </p>
-
-          <div className="day-profile-grid">
-            {quickProfiles.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                className={`day-profile-tile${
-                  existingTomorrow?.profileId === p.id || tomorrowSaved === p.name
-                    ? ' day-profile-tile--active'
-                    : ''
-                }`}
-                disabled={savingTomorrow}
-                onClick={() => pickTomorrow(p.id, p.name)}
-              >
-                <span className="day-profile-tile__icon">{p.icon ?? '📅'}</span>
-                <span className="day-profile-tile__name">{p.name}</span>
-                {tileHint(p.systemKey) ? (
-                  <span className="day-profile-tile__hint" style={{ fontSize: 11, opacity: 0.75 }}>
-                    {tileHint(p.systemKey)}
-                  </span>
-                ) : null}
-              </button>
-            ))}
-          </div>
-
-          {tomorrowSaved && (
-            <p style={{ color: 'var(--color-accent)', fontSize: 'var(--text-sm)', marginTop: 8 }}>
-              ✓ Tomorrow is “{tomorrowSaved}” — e.g. bunk = still college day, home early for free time, then evening resumes.
-            </p>
-          )}
-
-          <div style={{ marginTop: 20, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Link to="/special-days">
-              <Button variant="secondary">Edit day types</Button>
-            </Link>
-            <Link to="/weekly-schedule">
-              <Button variant="ghost">Weekly schedule</Button>
-            </Link>
-            <Link to="/settings">
-              <Button variant="ghost">Settings</Button>
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
+  if (bunked && !boardedBack && !reachedHome) {
+    return <Page><TravelPhase date={date} iso={iso} state={travel} setState={refreshTravel} home /></Page>;
   }
+  if (!bunked && minute >= COLLEGE_END && !boardedBack) {
+    return <Page><TravelPhase date={date} iso={iso} state={travel} setState={refreshTravel} home /></Page>;
+  }
+  if (boardedBack && !reachedHome) return <Page><TravelPhase date={date} iso={iso} state={travel} setState={refreshTravel} home /></Page>;
 
+  // After home: still one routine per page. Workout disappears if home after 7:30.
+  if (reachedHome && postHomeRoutines.length > 0) {
+    const r = postHomeRoutines[0];
+    if (r.moduleTag === 'workout' && minute > WORKOUT_CANCEL_AFTER) {
+      void completionRecordsRepo.create({ date: iso, refType: 'routine', refId: r.id, status: 'skipped', note: 'Cancelled because home arrival was after 7:30 PM.' });
+      setTick(v => v + 1);
+    } else {
+      return <Page><RoutinePhase routine={r} iso={iso} onDone={() => setTick(v => v + 1)} /></Page>;
+    }
+  }
+  if (reachedHome && nightRoutines.length > 0) return <Page><RoutinePhase routine={nightRoutines[0]} iso={iso} onDone={() => setTick(v => v + 1)} /></Page>;
 
-  const isBunk = profile?.systemKey === 'bunk';
-  const isLeaveOrRest =
-    profile?.systemKey === 'rest' ||
-    profile?.systemKey === 'holiday' ||
-    today.isWeekend;
-  const homeReady =
-    !(isBunk || profile?.systemKey === 'stay_out') ||
-    homeArrival.insideHome === true ||
-    (homeArrival.lastEvent?.kind === 'enter_home' &&
-      homeArrival.lastEvent.at.slice(0, 10) === (progress?.date ?? ''));
-  /** Bunk: spin only until ~19:30, then evening like normal college day */
-  const bunkSpinClosed = isBunk && isPastBunkSpinWindow();
-
-  const action = isActionPhase(currentPhase);
-
-  /* -------------------- ACTIVE PHASE -------------------- */
-  return (
-    <div className="page-shell day-journey">
-      <header
-        className="page-shell__header"
-        style={{ alignItems: 'flex-start', flexDirection: 'column', gap: 4 }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%' }}>
-          <AppLogo size={32} />
-          <div style={{ flex: 1 }}>
-            <span style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)' }}>
-              {today.greeting}
-            </span>
-            <div
-              style={{
-                fontSize: 'var(--text-xs)',
-                color: 'var(--color-text-secondary)',
-                marginTop: 2,
-              }}
-            >
-              Phase {position.current} of {position.total}
-              {totalCount > 0 ? ` · ${doneCount}/${totalCount}` : ''}
-            </div>
-          </div>
-        </div>
-        <h1 className="page-shell__title" style={{ fontSize: 'var(--text-2xl)', marginTop: 8 }}>
-          {currentPhase.icon ? `${currentPhase.icon} ` : ''}
-          {currentPhase.name}
-        </h1>
-
-        {/* Progress bar */}
-        {totalCount > 0 && (
-          <div
-            style={{
-              width: '100%',
-              height: 6,
-              borderRadius: 3,
-              background: 'var(--color-border)',
-              marginTop: 8,
-              overflow: 'hidden',
-            }}
-          >
-            <div
-              style={{
-                height: '100%',
-                width: `${pct}%`,
-                background: 'var(--color-accent)',
-                transition: 'width 0.25s ease',
-              }}
-            />
-          </div>
-        )}
-      </header>
-
-      <div className="page-shell__content">
-        <Card style={{ marginBottom: 12, borderLeft: '3px solid var(--color-accent)' }}>
-          <p style={{ margin: 0, fontSize: 'var(--text-sm)' }}>{nudgeText}</p>
-        </Card>
-        {skipRoast && (
-          <Card style={{ marginBottom: 12, borderLeft: '3px solid #e85d4c' }}>
-            <p style={{ margin: 0, fontSize: 'var(--text-sm)' }}>{skipRoast}</p>
-            <Button variant="ghost" onClick={() => setSkipRoast(null)}>Got it</Button>
-          </Card>
-        )}
-        <DayAsksCard date={today.date} />
-        <MealPrompt date={today.date} />
-        {continueWatch && continueWatch.length > 0 && (
-          <Card style={{ marginBottom: 12 }}>
-            <div style={{ fontWeight: 600, marginBottom: 6 }}>Continue watching</div>
-            {continueWatch.map(({ item, suggestion }) => (
-              <div key={item.id} style={{ marginBottom: 8 }}>
-                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-accent)' }}>{suggestion}</div>
-              </div>
-            ))}
-            <Link to="/entertainment">
-              <Button variant="ghost">Open list</Button>
-            </Link>
-          </Card>
-        )}
-        {/* SPIN / FREE TIME phase */}
-        {action && !homeReady && (
-          <Card style={{ marginBottom: 16, textAlign: 'center', padding: '24px 16px' }}>
-            <div style={{ fontSize: 48, marginBottom: 8 }}>🚪</div>
-            <p style={{ fontSize: 'var(--text-lg)', fontWeight: 600, margin: '0 0 8px' }}>
-              Out of the house
-            </p>
-            <p style={{ color: 'var(--color-text-secondary)', margin: '0 0 16px', fontSize: 'var(--text-sm)' }}>
-              Bunk = college day, just home early. Spin unlocks when you arrive — then resume the rest of the day.
-            </p>
-            <Button
-              variant="primary"
-              onClick={async () => {
-                await homeArrival.imHome();
-                await refresh();
-              }}
-            >
-              I&apos;m home — unlock free time
-            </Button>
-          </Card>
-        )}
-        {action && homeReady && bunkSpinClosed && (
-          <Card style={{ marginBottom: 16, textAlign: 'center', padding: '24px 16px' }}>
-            <div style={{ fontSize: 40, marginBottom: 8 }}>🌆</div>
-            <p style={{ fontSize: 'var(--text-lg)', fontWeight: 600, margin: '0 0 8px' }}>
-              Free time closed ({BUNK_SPIN_END_HM})
-            </p>
-            <p style={{ color: 'var(--color-text-secondary)', margin: '0 0 16px', fontSize: 'var(--text-sm)' }}>
-              Free hour’s over — resume college-day evening: workout (if today), bath, treatment, sleep.
-            </p>
-            <Button variant="primary" onClick={finishSpinPhase}>
-              Continue to evening →
-            </Button>
-          </Card>
-        )}
-        {action && homeReady && !bunkSpinClosed && (
-          <Card style={{ marginBottom: 16, textAlign: 'center', padding: '24px 16px' }}>
-            <div style={{ fontSize: 48, marginBottom: 8 }}>🎡</div>
-            <p style={{ fontSize: 'var(--text-lg)', fontWeight: 600, margin: '0 0 8px' }}>
-              {isBunk ? "You're home — bunk free time" : isLeaveOrRest ? 'Leave / rest — spin time' : "You're home — free time"}
-            </p>
-            <p style={{ color: 'var(--color-text-secondary)', margin: '0 0 16px', fontSize: 'var(--text-sm)' }}>
-              {isBunk
-                ? `Still a college day. Spin until ${BUNK_SPIN_END_HM}, then resume evening (workout → bath → sleep).`
-                : 'Spin for K-drama, games, coding, or rest. Finish each spin before the next.'}
-            </p>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Link to="/spin">
-                <Button variant="primary">Open Spin Wheel</Button>
-              </Link>
-              <Button variant="secondary" onClick={finishSpinPhase}>
-                Done with free time →
-              </Button>
-            </div>
-          </Card>
-        )}
-
-        {/* Checklist — incomplete only */}
-        {!action && visibleRoutines.length === 0 && totalCount === 0 && (
-          <Card>
-            <p style={{ color: 'var(--color-text-secondary)', margin: 0 }}>
-              Nothing scheduled for this phase today. It will skip automatically when you refresh,
-              or mark it done below.
-            </p>
-            <Button variant="secondary" style={{ marginTop: 12 }} onClick={finishSpinPhase}>
-              Skip this phase
-            </Button>
-          </Card>
-        )}
-
-        {!action && visibleRoutines.length === 0 && totalCount > 0 && (
-          <Card style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: 'var(--text-lg)', margin: 0 }}>✓ Phase complete</p>
-            <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)' }}>
-              Advancing to the next phase…
-            </p>
-          </Card>
-        )}
-
-        {visibleRoutines.length > 0 && (
-          <ul
-            style={{
-              listStyle: 'none',
-              padding: 0,
-              margin: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 8,
-            }}
-          >
-            {visibleRoutines.map((routine) => {
-              const status = deriveStatus(
-                routine,
-                progress!.date,
-                completions.find((c) => c.refType === 'routine' && c.refId === routine.id),
-                new Date()
-              );
-              return (
-                <li key={routine.id}>
-                  <Card
-                    interactive
-                    onClick={() => toggle(routine.id, false)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 12,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <span
-                      title={STATUS_LABELS[status]}
-                      style={{
-                        width: 26,
-                        height: 26,
-                        borderRadius: '50%',
-                        border:
-                          status === 'missed'
-                            ? '2px solid var(--color-danger)'
-                            : '2px solid var(--color-border)',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                      }}
-                    />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 500 }}>{routine.title}</div>
-                      {routine.time && (
-                        <div
-                          style={{
-                            fontSize: 'var(--text-sm)',
-                            color: 'var(--color-text-secondary)',
-                          }}
-                        >
-                          {formatHm12(routine.time)}
-                          {routine.durationMinutes ? ` · ${routine.durationMinutes}m` : ''}
-                        </div>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      className="day-journey__skip"
-                      style={{
-                        border: 'none',
-                        background: 'transparent',
-                        color: 'var(--color-text-secondary)',
-                        fontSize: 'var(--text-sm)',
-                        cursor: 'pointer',
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        void skipItem(routine.id, routine.title);
-                      }}
-                    >
-                      Skip
-                    </button>
-                  </Card>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-
-        {doneCount > 0 && (
-          <p
-            style={{
-              textAlign: 'center',
-              color: 'var(--color-text-secondary)',
-              fontSize: 'var(--text-sm)',
-              marginTop: 12,
-            }}
-          >
-            {doneCount} done — vanished from list
-          </p>
-        )}
-
-        <div style={{ marginTop: 24, textAlign: 'center' }}>
-          <Link to="/settings">
-            <Button variant="ghost">Settings & modules</Button>
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
+  return <Page><Phase eyebrow="DAY COMPLETE" title="Good night" subtitle="Every phase for today is finished. Tomorrow starts fresh." ><Link to="/settings"><Button variant="secondary">Settings</Button></Link></Phase></Page>;
 }

@@ -23,13 +23,9 @@ export interface GreetingConfig {
 
 export const DEFAULT_GREETINGS: Greeting[] = [
   { language: 'English', text: 'Good morning', meaning: 'Good morning' },
-  { language: 'Japanese', text: 'Ohayou gozaimasu', meaning: 'Good morning (polite)' },
-  { language: 'Korean', text: 'Joeun achim', meaning: 'Good morning' },
-  { language: 'French', text: 'Bonjour', meaning: 'Good day / hello' },
-  { language: 'Tamil', text: 'Kaalai vanakkam', meaning: 'Good morning' },
-  { language: 'Spanish', text: 'Buenos dias', meaning: 'Good morning' },
-  { language: 'German', text: 'Guten Morgen', meaning: 'Good morning' },
-  { language: 'Italian', text: 'Buongiorno', meaning: 'Good morning' },
+  { language: 'Japanese', text: 'おはようございます', meaning: 'Good morning' },
+  { language: 'Korean', text: '좋은 아침이에요', meaning: 'Good morning' },
+  { language: 'French', text: 'Bonjour', meaning: 'Good morning' },
 ];
 
 export async function getGreetingConfig(): Promise<GreetingConfig> {
@@ -37,7 +33,7 @@ export async function getGreetingConfig(): Promise<GreetingConfig> {
   return {
     enabled: s?.enabled ?? true,
     name: s?.name ?? '',
-    list: s?.list && s.list.length > 0 ? s.list : DEFAULT_GREETINGS,
+    list: DEFAULT_GREETINGS,
   };
 }
 

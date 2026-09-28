@@ -201,6 +201,15 @@ export async function planNotifications(now = new Date()): Promise<Planned[]> {
     }
   }
 
+  if (await isCollegeLikeDay(today)) {
+    out.push({
+      key: `college-wake-0900:${todayIso}`,
+      at: atTime(today, '09:00'),
+      title: 'Wake up — college',
+      body: 'Wake up. You are due to get off the bus and reach class around 9:10.',
+    });
+  }
+
   if (await isCoachDay(today)) {
     const travel = await getTravel(todayIso);
     const boarded = hasBoardedOut(travel);
