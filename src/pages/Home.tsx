@@ -1,5 +1,5 @@
 /**
- * Personal Day Journey — one full-screen phase at a time.
+ * Personal Day Journey — one full-screen step at a time.
  * This is deliberately a journey, not a dashboard:
  * wake → each routine → bus → each college period/break/lunch → bus home
  * → home → workout/guitar/night routines → tomorrow plan.
@@ -301,7 +301,7 @@ export default function Home() {
             ✓ Finish {nextMorning.title}
           </Button>
           <Button variant="ghost" style={{ marginTop: 8 }} onClick={() => markRoutine(nextMorning, 'skipped')}>
-            Skip this phase
+            Skip this step
           </Button>
         </Card>
       </PhaseFrame>
@@ -342,7 +342,7 @@ export default function Home() {
           {expenseSaved && <p style={{ color: 'var(--color-accent)', marginTop: 8 }}>✓ Commute expense saved</p>}
         </Card>
         <p style={{ textAlign: 'center', color: 'var(--color-text-secondary)' }}>
-          At 9:00 the bus phase automatically disappears and the college phase takes over.
+          At 9:00 the bus screen automatically changes to your college timetable.
         </p>
       </PhaseFrame>
     );
@@ -387,7 +387,7 @@ export default function Home() {
           title="Get to class"
           icon="🏃"
           time="9:00 AM wake-up · 9:10 AM class"
-          position="Bus phase finished · move from the bus to your classroom"
+          position="Bus journey finished · move to your classroom"
         >
           <Card style={{ textAlign: 'center' }}>
             <p style={{ marginBottom: 14 }}>
@@ -416,7 +416,7 @@ export default function Home() {
           title={subjectName}
           icon={slot.kind === 'class' ? '📚' : slot.kind === 'lunch' ? '🍱' : '☕'}
           time={detail}
-          position="This phase changes automatically when the clock reaches the next slot"
+          position="This screen changes automatically when the clock reaches the next slot"
         >
           <Card>
             {slot.kind === 'class' && resolved.subject?.faculty && (
@@ -425,7 +425,7 @@ export default function Home() {
             {slot.kind === 'class' && resolved.cell?.isLab && (
               <p style={{ color: 'var(--color-accent)', marginBottom: 8 }}>🧪 Lab {resolved.cell.room ? `· ${resolved.cell.room}` : ''}</p>
             )}
-            {slot.kind === 'break' && <p>Interval — no class. Your next phase appears automatically.</p>}
+            {slot.kind === 'break' && <p>Interval — no class. The next timetable screen appears automatically.</p>}
             {slot.kind === 'lunch' && (
               <>
                 <p style={{ marginBottom: 10 }}>Lunch expense</p>
@@ -461,7 +461,7 @@ export default function Home() {
       return (
         <PhaseFrame eyebrow="College finished" title="College ends" icon="🏫" time="4:10 PM timetable · 4:30 PM departure">
           <Card>
-            <p>Last timetable slot is complete. Your return-bus phase opens at 4:30 PM.</p>
+            <p>Last timetable slot is complete. Your return bus opens at 4:30 PM.</p>
           </Card>
         </PhaseFrame>
       );
@@ -548,7 +548,7 @@ export default function Home() {
             ✓ Finish {nextEvening.title}
           </Button>
           <Button variant="ghost" style={{ marginTop: 8 }} onClick={() => markRoutine(nextEvening, 'skipped')}>
-            Skip this phase
+            Skip this step
           </Button>
         </Card>
       </PhaseFrame>
@@ -560,7 +560,7 @@ export default function Home() {
     <PhaseFrame eyebrow="Journey complete" title="Good night" icon="🌙" time="Today is finished">
       <Card style={{ textAlign: 'center' }}>
         <p style={{ color: 'var(--color-text-secondary)', marginBottom: 16 }}>
-          Every phase that was scheduled for today is complete.
+          Everything scheduled for today is complete.
         </p>
         <TomorrowOrderCard date={today.date} />
         <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginTop: 8 }}>

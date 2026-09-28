@@ -13,7 +13,6 @@ export function AppShell() {
       </div>
       <WelcomeOverlay />
       <BottomNav />
-      {/* DEMO — remove this line + src/demo/ before release */}
       <DemoToolsPanel />
     </div>
   );

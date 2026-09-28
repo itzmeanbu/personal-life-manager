@@ -38,7 +38,12 @@ export async function getDayOrderForDate(iso: string): Promise<number | null> {
   const earlier = Object.keys(map)
     .filter((d) => d < iso)
     .sort();
-  if (earlier.length === 0) return null;
+  if (earlier.length === 0) {
+    map[iso] = 1;
+    await setSetting(KEY, map);
+    await setSetting(LAST_KEY, { order: 1, date: iso });
+    return 1;
+  }
 
   const lastDate = earlier[earlier.length - 1];
   const lastOrder = map[lastDate];

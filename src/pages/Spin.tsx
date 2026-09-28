@@ -372,7 +372,7 @@ export default function Spin() {
 
           {(sessionOpen || (result && !result.childWheelId)) && (
             <p className="sp-muted" style={{ textAlign: 'center', marginBottom: 8 }}>
-              Finish this spin at the wall (timer / DEMO log / mark finished) before the next one.
+              Finish this spin before starting the next one.
             </p>
           )}
           {!result && (
@@ -417,55 +417,6 @@ export default function Spin() {
                 <Button variant="primary" onClick={() => void finishActiveSession()}>
                   Mark session finished (real time)
                 </Button>
-              )}
-              {/* DEMO — instant history without waiting */}
-              {result && !result.childWheelId && (
-                <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <Button
-                    variant="secondary"
-                    disabled={busy}
-                    onClick={async () => {
-                      if (!result || !currentWheel) return;
-                      setBusy(true);
-                      try {
-                        const now = getDemoDate();
-                        const hours = 3;
-                        const mins = hours * 60;
-                        const started = new Date(now.getTime() - mins * 60000);
-                        await spinHistoriesRepo.create({
-                          date: toIsoDate(now),
-                          wheelId: currentWheel.id,
-                          wheelName: currentWheel.name,
-                          optionId: result.id,
-                          optionLabel: watchlistPickLabel || result.label,
-                          path: [...path, watchlistPickLabel || result.label],
-                          durationMinutes: mins,
-                          plannedMinutes: result.durationMinutes ?? mins,
-                          startedAt: started.toISOString(),
-                          endedAt: now.toISOString(),
-                          actualMinutes: mins,
-                          completed: true,
-                        });
-                        setBudgetNote(`DEMO · logged ${hours}h to today's history (no episode +1)`);
-                        setTimerMinutes(null);
-                        setActiveHistoryId(null);
-                        setResult(null);
-                        setWatchlistPickLabel(null);
-                      } finally {
-                        setBusy(false);
-                      }
-                    }}
-                  >
-                    DEMO — log as watched 3 hours
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    disabled={busy || !activeHistoryId}
-                    onClick={() => void finishActiveSession(timerMinutes ?? undefined)}
-                  >
-                    DEMO — complete current timer now
-                  </Button>
-                </div>
               )}
               <div className="sp-actions">
                 {result.childWheelId ? (

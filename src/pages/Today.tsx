@@ -72,7 +72,7 @@ function ExpenseCapture({ iso, category, note }: { iso: string; category: string
   return (
     <div className="phase-tool">
       <div className="phase-tool__title">₹ Spending</div>
-      <p>Record the money spent during this phase. It will appear in your daily, weekly, monthly and yearly spending history.</p>
+      <p>Record the money spent here. It will appear in your daily, weekly, monthly and yearly spending history.</p>
       <div className="phase-tool__row">
         <input
           type="number"
@@ -187,7 +187,7 @@ export default function Today() {
     await journey.refresh();
   };
 
-  const finishCurrentPhase = async () => {
+  const finishCurrentStep = async () => {
     if (!journey.currentPhase) return;
     await markPhaseComplete(clock, journey.currentPhase.id);
     await journey.refresh();
@@ -228,7 +228,7 @@ export default function Today() {
           <p>Tap when you actually wake up. Morning timings are generated from that exact time.</p>
           <Button variant="primary" onClick={() => void startWake()}>I&apos;m awake</Button>
         </section>
-        <div className="flow-footer-note">Demo clock: {formatHm12(hm(clock))}</div>
+        <div className="flow-footer-note">Clock: {formatHm12(hm(clock))}</div>
       </main>
     );
   }
@@ -246,22 +246,22 @@ export default function Today() {
           <p className="flow-kicker">{slot.kind === 'class' ? 'COLLEGE PERIOD' : 'COLLEGE INTERVAL'}</p>
           <h1>{title}</h1>
           {slot.kind === 'class' && subject?.faculty && <p>Faculty · {subject.faculty}</p>}
-          {slot.kind === 'class' && subject && <p>Day order {dayOrder} · this phase is recorded automatically in your Activity Log.</p>}
-          {slot.kind === 'break' && <p>Use this phase to eat, buy something, use Xerox, or simply take your break.</p>}
-          {slot.kind === 'lunch' && <p>Lunch is its own phase. Record food and spending here before it disappears.</p>}
+          {slot.kind === 'class' && subject && <p>Day order {dayOrder} · This period is recorded automatically in your Activity Log.</p>}
+          {slot.kind === 'break' && <p>Eat, buy something, use Xerox, or simply take your break.</p>}
+          {slot.kind === 'lunch' && <p>Lunch is recorded here before this screen moves on.</p>}
           {isBreak && <ExpenseCapture iso={iso} category={slot.kind === 'lunch' ? 'food' : 'canteen'} note={`College ${slot.label}`} />}
           <div className="flow-actions">
             <Link to="/activity-log"><Button variant="ghost">Activity Log</Button></Link>
             <Link to="/college"><Button variant="ghost">College records</Button></Link>
           </div>
         </section>
-        <div className="flow-footer-note">The next period/interval replaces this phase automatically.</div>
+        <div className="flow-footer-note">The next period or interval replaces this screen automatically.</div>
       </main>
     );
   }
 
   if (journey.loading) {
-    return <main className="flow-screen"><section className="flow-hero"><p className="flow-kicker">DAILY FLOW</p><h1>Loading your next phase…</h1></section></main>;
+    return <main className="flow-screen"><section className="flow-hero"><p className="flow-kicker">DAILY FLOW</p><h1>Loading your next step…</h1></section></main>;
   }
 
   if (currentRoutine) {
@@ -286,9 +286,9 @@ export default function Today() {
           <span>{formatHm12(hm(clock))}</span>
         </div>
         <section className="flow-hero">
-          <div className="flow-progress">Phase {journey.position.current} of {journey.position.total}</div>
+          <div className="flow-progress">Step {journey.position.current} of {journey.position.total}</div>
           <div className="flow-icon">{journey.currentPhase?.icon ?? phaseIcon(title, currentRoutine.moduleTag)}</div>
-          <p className="flow-kicker">{journey.currentPhase?.name ?? 'CURRENT PHASE'}</p>
+          <p className="flow-kicker">{journey.currentPhase?.name ?? 'CURRENT STEP'}</p>
           <h1>{title}</h1>
           <p>{currentRoutine.notes ?? currentRoutine.category}</p>
 
@@ -324,8 +324,8 @@ export default function Today() {
           {isFood && !isBus && (
             <div className="phase-tools">
               <div className="phase-tool">
-                <div className="phase-tool__title">🍽️ Food phase</div>
-                <p>Eat now. When this phase is complete it disappears and the next phase takes over.</p>
+                <div className="phase-tool__title">🍽️ Food</div>
+                <p>Eat now. When this is complete it disappears and the next step takes over.</p>
               </div>
               <ExpenseCapture iso={iso} category={/canteen|tea|snack/.test(lower) ? 'canteen' : 'food'} note={title} />
             </div>
@@ -334,7 +334,7 @@ export default function Today() {
           {isNaveen && (
             <div className="phase-tool">
               <div className="phase-tool__title">👥 Naveen Anna Time</div>
-              <p>No artificial time limit. Stay as long as you actually spend time together. Finish this phase only when you are done.</p>
+              <p>No artificial time limit. Stay as long as you actually spend time together. Finish only when you are done.</p>
               <ExpenseCapture iso={iso} category="social" note="Naveen Anna" />
               <Link to="/social"><Button variant="ghost">Open social record</Button></Link>
             </div>
@@ -391,11 +391,11 @@ export default function Today() {
           )}
 
           <div className="flow-actions">
-            <Button variant="primary" disabled={isSleep && !tomorrowConfigured} onClick={() => void completeRoutine()}>{isSleep && !tomorrowConfigured ? 'Choose tomorrow first' : 'Done — next phase'}</Button>
+            <Button variant="primary" disabled={isSleep && !tomorrowConfigured} onClick={() => void completeRoutine()}>{isSleep && !tomorrowConfigured ? 'Choose tomorrow first' : 'Done — next step'}</Button>
             <Link to="/activity-log"><Button variant="ghost">Activity Log</Button></Link>
           </div>
         </section>
-        <div className="flow-footer-note">Only this phase is active. Complete it and it disappears.</div>
+        <div className="flow-footer-note">Only this step is active. Complete it and it disappears.</div>
       </main>
     );
   }
@@ -406,11 +406,11 @@ export default function Today() {
         <div className="flow-topline"><span>Free Time</span><span>{formatHm12(hm(clock))}</span></div>
         <section className="flow-hero">
           <div className="flow-icon">🎡</div>
-          <p className="flow-kicker">MANDATORY FREE-TIME PHASE</p>
+          <p className="flow-kicker">MANDATORY FREE-TIME</p>
           <h1>Spin the wheel.</h1>
-          <p>Spin is available only inside the free-time window for this day type. The selected activity gets its own timed phase and record.</p>
+          <p>Spin is available only inside the free-time window for this day type. The selected activity gets its own timed activity and record.</p>
           <Link to="/spin"><Button variant="primary">Open Spin Wheel</Button></Link>
-          <Button variant="ghost" onClick={() => void finishCurrentPhase()}>Finish free-time phase</Button>
+          <Button variant="ghost" onClick={() => void finishCurrentStep()}>Finish free time</Button>
         </section>
       </main>
     );
@@ -438,8 +438,8 @@ export default function Today() {
     <main className="flow-screen">
       <section className="flow-hero">
         <div className="flow-icon">◌</div>
-        <p className="flow-kicker">BETWEEN PHASES</p>
-        <h1>You&apos;re between phases.</h1>
+        <p className="flow-kicker">BETWEEN STEPS</p>
+        <h1>You&apos;re between steps.</h1>
         <p>Current spending recorded today: ₹{moneyToday.reduce((s, x) => s + x.amount, 0).toFixed(0)}.</p>
         <Link to="/settings"><Button variant="secondary">Check day setup</Button></Link>
       </section>
