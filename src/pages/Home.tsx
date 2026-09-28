@@ -258,10 +258,10 @@ export default function Home() {
               Rest well. A new journey starts at midnight.
             </p>
             <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {today.isWeekend && (
-                {!codingDay && (<Link to="/spin">
+              {today.isWeekend && !codingDay && (
+                <Link to="/spin">
                   <Button variant="secondary">Open Spin Wheel</Button>
-                </Link>)}
+                </Link>
               )}
               <Button
                 variant="ghost"
