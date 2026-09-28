@@ -39,7 +39,7 @@ export default function Today() {
   const [clock, setClock] = useState(() => getDemoDate());
   const iso = toIsoDate(clock);
   const { profile } = useActiveDayProfile(clock);
-  const { agenda, setStatus, refresh: refreshAgenda } = useDailyAgenda(clock);
+  const { agenda, setStatus } = useDailyAgenda(clock);
   const journey = useDayProgress(clock);
   const [wakeAt, setWakeAt] = useState<string | null>(null);
   const [dayOrder, setDayOrder] = useState<number | null>(null);
@@ -120,7 +120,6 @@ export default function Today() {
   const completeRoutine = async () => {
     if (!currentRoutine) return;
     await setStatus(currentRoutine.id, 'done');
-    await refreshAgenda();
     await journey.refresh();
   };
 
