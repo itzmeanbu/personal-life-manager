@@ -413,7 +413,7 @@ export function formatMinHm(min: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
-/** "I'm up" wake time — logged once per date by the Morning Greeting screen. */
+/** "I'm up" wake time — logged once per date by the wake gate (MorningGreeting). */
 const WAKE_TIME_KEY = 'day.wakeTime.v1';
 
 export interface WakeTimeState {
@@ -427,8 +427,9 @@ export async function getWakeTime(dateIso: string): Promise<WakeTimeState | null
   return s;
 }
 
-export async function setWakeTime(dateIso: string): Promise<WakeTimeState> {
-  const next: WakeTimeState = { date: dateIso, at: new Date().toISOString() };
+/** `at` defaults to now; pass an earlier time when the person woke before opening the app. */
+export async function setWakeTime(dateIso: string, at: Date = new Date()): Promise<WakeTimeState> {
+  const next: WakeTimeState = { date: dateIso, at: at.toISOString() };
   await setSetting(WAKE_TIME_KEY, next);
   return next;
 }

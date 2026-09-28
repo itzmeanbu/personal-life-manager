@@ -13,6 +13,13 @@ import {
 import type { Phase, DayProgress, Routine, CompletionRecord, DayProfile } from '../data/types';
 import { toIsoDate, isRoutineScheduledOnDate, sortRoutines } from '../routine/engine';
 import { effectiveDayStatus, statusSkipsCollege, CODING_SKIPPED_TAGS } from './spendPrompts';
+import {
+  phaseDayPart,
+  toMin,
+  isEveningCategory,
+  MORNING_END_MIN,
+  EVENING_START_MIN,
+} from './timeline';
 
 /** True for free-time / spin style phases that don't need routine rows. */
 export function isActionPhase(phase: Phase): boolean {
@@ -21,20 +28,42 @@ export function isActionPhase(phase: Phase): boolean {
   return n.includes('spin') || n.includes('free time') || n.includes('free-time');
 }
 
-/** Routines that belong to a phase on a given date. */
+/**
+ * Routines that belong to a phase on a given date.
+ *
+ * Category matching alone put night routines (Bath 20:45, Night hair & face
+ * 21:00 — both "Hygiene") into the Morning phase, so the morning could not
+ * finish until they were ticked. Time of day now decides:
+ * - Morning: category matches only count when planned before 12:00 (or untimed).
+ * - Evening: also takes Hygiene/Meals routines planned at/after 17:00.
+ */
 export function routinesForPhase(
   phase: Phase,
   allRoutines: Routine[],
   date: Date
 ): Routine[] {
   const scheduled = allRoutines.filter((r) => isRoutineScheduledOnDate(r, date));
+  const part = phaseDayPart(phase);
   return sortRoutines(
     scheduled.filter((r) => {
       if (phase.moduleTags.length > 0 && r.moduleTag) {
         if (phase.moduleTags.includes(r.moduleTag)) return true;
       }
+      const min = toMin(r.time);
       if (phase.categories.length > 0 && r.category) {
-        if (phase.categories.includes(r.category)) return true;
+        if (phase.categories.includes(r.category)) {
+          if (part === 'morning' && min != null && min >= MORNING_END_MIN) return false;
+          return true;
+        }
+      }
+      if (
+        part === 'evening' &&
+        !r.moduleTag &&
+        min != null &&
+        min >= EVENING_START_MIN &&
+        isEveningCategory(r.category)
+      ) {
+        return true;
       }
       return false;
     })

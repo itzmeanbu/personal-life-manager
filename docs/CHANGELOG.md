@@ -1,5 +1,14 @@
 # Changelog
 
+## Wake gate, time-anchored morning, nav fix
+
+- Welcome page is now a full-screen "Did you wake up?" (Yes / I woke up earlier / Not yet). Shown 04:00-15:00 until a wake time is logged.
+- Wake time drives the morning block: routine times shift later by however late you woke (never earlier). "Wake up" routine and "Actually out of bed" ask are ticked automatically.
+- Home shows what to do Now (or Next at ...), then Coming up, above the yes/no cards. "Morning To-Do" heading is now "Morning" with "up since ..." in the header.
+- Fixed: Morning phase pulled in night routines (Bath, Night hair & face) because they share the Hygiene category, so it showed 0/7 and could not finish. Category matches now respect time of day; Bath / Night routine belong to Evening.
+- Bottom nav: four equal-width tabs (Today, Modules, Progress, Settings) with SVG icons; removed the off-centre floating button. Modules opens the same drawer.
+- Files: components/navigation/BottomNav.tsx + navigation.css, home/MorningGreeting.tsx + wakeGate.css, day/timeline.ts + timeline.css, day/wakeGate.ts, day/phaseEngine.ts, day/spendPrompts.ts (setWakeTime takes an optional time), hooks/useNow.ts, pages/Home.tsx
+
 ## Final integration phase
 
 - Added ARCHITECTURE.md, FEATURES.md, README (frontend/backend), root .gitignore

@@ -1,0 +1,79 @@
+.wake-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: var(--space-8) var(--space-6) calc(var(--space-8) + env(safe-area-inset-bottom, 0px));
+  background: var(--color-bg);
+  overflow-y: auto;
+}
+.wake-gate__inner {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+}
+.wake-gate__greeting {
+  font-size: var(--text-lg);
+  color: var(--color-text-secondary);
+}
+.wake-gate__question {
+  margin: var(--space-2) 0 var(--space-1);
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.wake-gate__meta {
+  margin-bottom: var(--space-8);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+.wake-gate__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.wake-gate__actions > .btn {
+  width: 100%;
+  min-height: 52px;
+  font-size: var(--text-base);
+}
+.wake-gate__earlier {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+}
+.wake-gate__earlier label {
+  flex: 1;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+.wake-gate__earlier input[type='time'] {
+  border: 0;
+  background: transparent;
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--text-base);
+}
+.wake-gate__plan {
+  margin-top: var(--space-8);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+.wake-gate__plan summary {
+  cursor: pointer;
+  margin-bottom: var(--space-2);
+}
+.wake-gate__plan ul {
+  margin: var(--space-1) 0 var(--space-3);
+  padding-left: 18px;
+}
+.wake-gate__plan li {
+  margin-bottom: 4px;
+}

@@ -10,7 +10,7 @@ import { Button } from '../components/ui/Button';
 import { useToday } from '../hooks/useToday';
 import { useDayProgress, useAllDayProfiles } from '../day/hooks';
 import { useDailyAgenda } from '../routine/hooks';
-import { deriveStatus, STATUS_LABELS } from '../routine/engine';
+import { deriveStatus } from '../routine/engine';
 import { markPhaseComplete, isActionPhase } from '../day/phaseEngine';
 import { forceRebuildToday } from '../day/migrateWeekend';
 import {
@@ -22,7 +22,7 @@ import {
 import { MealPrompt } from '../day/MealPrompt';
 import { DayAsksCard } from '../day/DayAsksCard';
 import { DayBriefBody } from '../day/DayBriefBody';
-import { effectiveDayStatus } from '../day/spendPrompts';
+import { effectiveDayStatus, getWakeTime } from '../day/spendPrompts';
 import { getContinueCandidates } from '../entertainment/continue';
 import { dayAssignmentsRepo } from '../data/repository';
 import { toIsoDate } from '../routine/engine';
@@ -30,10 +30,16 @@ import { AppLogo } from '../appearance/AppLogo';
 import { useHomeArrival } from '../home/HomeArrivalProvider';
 import { useActiveDayProfile } from '../day/hooks';
 import { formatHm12 } from '../lib/timeFormat';
+import { buildTimeline, phaseDayPart, phaseHeading, minToHm } from '../day/timeline';
+import { WAKE_LOGGED_EVENT } from '../day/wakeGate';
+import { useNow } from '../hooks/useNow';
 import '../day/day.css';
+import '../day/timeline.css';
 
 export default function Home() {
   const today = useToday();
+  const now = useNow(today.date);
+  const nowMin = now.getHours() * 60 + now.getMinutes();
   const {
     progress,
     loading,
@@ -61,6 +67,26 @@ export default function Home() {
     };
     window.addEventListener('day-status-changed', onChange);
     return () => window.removeEventListener('day-status-changed', onChange);
+  }, [today.date, refresh]);
+  // Wake time drives the morning block: routines are timed from when you actually got up.
+  const [wakeMin, setWakeMin] = useState<number | null>(null);
+  useEffect(() => {
+    const load = () =>
+      void getWakeTime(toIsoDate(today.date)).then((w) => {
+        if (!w) {
+          setWakeMin(null);
+          return;
+        }
+        const d = new Date(w.at);
+        setWakeMin(d.getHours() * 60 + d.getMinutes());
+      });
+    load();
+    const onWake = () => {
+      load();
+      void refresh();
+    };
+    window.addEventListener(WAKE_LOGGED_EVENT, onWake);
+    return () => window.removeEventListener(WAKE_LOGGED_EVENT, onWake);
   }, [today.date, refresh]);
   const continueWatch = useLiveQuery(() => getContinueCandidates(2), [], []);
   const [savingTomorrow, setSavingTomorrow] = useState(false);
@@ -99,6 +125,17 @@ export default function Home() {
   const totalCount = phaseRoutines.length;
   const pct =
     totalCount === 0 ? 0 : Math.round((doneCount / totalCount) * 100);
+
+  const timeline = useMemo(
+    () =>
+      buildTimeline(visibleRoutines, {
+        wakeMin,
+        nowMin,
+        anchorToWake: !!currentPhase && phaseDayPart(currentPhase) === 'morning',
+        anchorFrom: phaseRoutines,
+      }),
+    [visibleRoutines, phaseRoutines, wakeMin, nowMin, currentPhase]
+  );
 
   const toggle = useCallback(
     async (routineId: string, currentlyDone: boolean) => {
@@ -348,6 +385,8 @@ export default function Home() {
   const bunkSpinClosed = isBunk && isPastBunkSpinWindow();
 
   const action = isActionPhase(currentPhase);
+  const [nowItem, ...laterItems] = timeline;
+  const timeLabel = (m: number | null) => (m == null ? '' : formatHm12(minToHm(m)));
 
   /* -------------------- ACTIVE PHASE -------------------- */
   return (
@@ -371,12 +410,13 @@ export default function Home() {
             >
               Phase {position.current} of {position.total}
               {totalCount > 0 ? ` · ${doneCount}/${totalCount}` : ''}
+              {wakeMin != null ? ` · up since ${formatHm12(minToHm(wakeMin))}` : ''}
             </div>
           </div>
         </div>
         <h1 className="page-shell__title" style={{ fontSize: 'var(--text-2xl)', marginTop: 8 }}>
           {currentPhase.icon ? `${currentPhase.icon} ` : ''}
-          {currentPhase.name}
+          {phaseHeading(currentPhase.name)}
         </h1>
 
         {/* Progress bar */}
@@ -413,6 +453,85 @@ export default function Home() {
             <Button variant="ghost" onClick={() => setSkipRoast(null)}>Got it</Button>
           </Card>
         )}
+
+        {/* Time-driven: what to do now, then what's coming up */}
+        {!action && nowItem && (
+          <section className="now-card" aria-live="polite">
+            <div className={`now-card__label${nowItem.late ? ' now-card__label--late' : ''}`}>
+              {nowItem.late
+                ? `Overdue since ${timeLabel(nowItem.startMin)}`
+                : nowItem.due
+                  ? 'Now'
+                  : nowItem.startMin != null
+                    ? `Next at ${timeLabel(nowItem.startMin)}`
+                    : 'Next'}
+            </div>
+            <div className="now-card__title">{nowItem.routine.title}</div>
+            <div className="now-card__meta">
+              {[
+                timeLabel(nowItem.startMin),
+                nowItem.routine.durationMinutes ? `${nowItem.routine.durationMinutes} min` : '',
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </div>
+            <div className="now-card__actions">
+              <Button variant="primary" onClick={() => void toggle(nowItem.routine.id, false)}>
+                Done
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => void skipItem(nowItem.routine.id, nowItem.routine.title)}
+              >
+                Skip
+              </Button>
+            </div>
+          </section>
+        )}
+
+        {!action && laterItems.length > 0 && (
+          <div>
+            <div className="timeline-heading">Coming up</div>
+            <ul className="timeline-list">
+              {laterItems.map((item) => (
+                <li key={item.routine.id}>
+                  <Card
+                    interactive
+                    className="timeline-row"
+                    onClick={() => void toggle(item.routine.id, false)}
+                  >
+                    <span
+                      className={`timeline-row__dot${item.late ? ' timeline-row__dot--late' : ''}`}
+                      title={item.late ? 'Overdue' : 'Upcoming'}
+                    />
+                    <div className="timeline-row__body">
+                      <div className="timeline-row__title">{item.routine.title}</div>
+                      <div className="timeline-row__meta">
+                        {[
+                          timeLabel(item.startMin),
+                          item.routine.durationMinutes ? `${item.routine.durationMinutes}m` : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="timeline-row__skip"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void skipItem(item.routine.id, item.routine.title);
+                      }}
+                    >
+                      Skip
+                    </button>
+                  </Card>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <DayAsksCard date={today.date} />
         <MealPrompt date={today.date} />
         {continueWatch && continueWatch.length > 0 && (
@@ -505,90 +624,6 @@ export default function Home() {
               Advancing to the next phase…
             </p>
           </Card>
-        )}
-
-        {visibleRoutines.length > 0 && (
-          <ul
-            style={{
-              listStyle: 'none',
-              padding: 0,
-              margin: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 8,
-            }}
-          >
-            {visibleRoutines.map((routine) => {
-              const status = deriveStatus(
-                routine,
-                progress!.date,
-                completions.find((c) => c.refType === 'routine' && c.refId === routine.id),
-                new Date()
-              );
-              return (
-                <li key={routine.id}>
-                  <Card
-                    interactive
-                    onClick={() => toggle(routine.id, false)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 12,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <span
-                      title={STATUS_LABELS[status]}
-                      style={{
-                        width: 26,
-                        height: 26,
-                        borderRadius: '50%',
-                        border:
-                          status === 'missed'
-                            ? '2px solid var(--color-danger)'
-                            : '2px solid var(--color-border)',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                      }}
-                    />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 500 }}>{routine.title}</div>
-                      {routine.time && (
-                        <div
-                          style={{
-                            fontSize: 'var(--text-sm)',
-                            color: 'var(--color-text-secondary)',
-                          }}
-                        >
-                          {formatHm12(routine.time)}
-                          {routine.durationMinutes ? ` · ${routine.durationMinutes}m` : ''}
-                        </div>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      className="day-journey__skip"
-                      style={{
-                        border: 'none',
-                        background: 'transparent',
-                        color: 'var(--color-text-secondary)',
-                        fontSize: 'var(--text-sm)',
-                        cursor: 'pointer',
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        void skipItem(routine.id, routine.title);
-                      }}
-                    >
-                      Skip
-                    </button>
-                  </Card>
-                </li>
-              );
-            })}
-          </ul>
         )}
 
         {doneCount > 0 && (
