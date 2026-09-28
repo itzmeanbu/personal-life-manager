@@ -311,6 +311,15 @@ export async function setDayStatus(
     }
   }
 
+  // Day-order ALWAYS runs 1→6 even on leave/bunk — sequence never freezes.
+  try {
+    const { ensureOrderForPlannedCollege, markDayOrderUsed } = await import('../college/dayOrder');
+    const n = await ensureOrderForPlannedCollege(dateIso);
+    await markDayOrderUsed(dateIso, n);
+  } catch {
+    /* day-order helpers optional at boot */
+  }
+
   return next;
 }
 

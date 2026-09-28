@@ -1,5 +1,13 @@
 # Changelog
 
+## Journey phase state machine + day-order fix
+
+- **Exclusive phases:** Home renders only the current journey phase (MORNING_BEFORE_LEAVING → MORNING_BUS → COLLEGE → EVENING_BUS → HOME_EVENING → WHATS_TOMORROW → NIGHT).
+- **Day order:** Advances only on attended college days. Leave/bunk/didnt-go do not consume the next timetable order.
+- **College phase** owns full/bunk/leave; bus = music only; night after Whats Tomorrow.
+- Files: day/journeyState.ts, BusMusicPhase, CollegePhasePanel, NightPhasePanel, college/dayOrder.ts, pages/Home.tsx.
+
+
 ## Late-wake college intelligence
 
 - Wake ~**6:00** college day → rush plan: bare minimum routines, leave ~7:00–7:15, **join after Period 1** (ends 09:55). One-tap log late / after P1.
