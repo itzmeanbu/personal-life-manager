@@ -193,6 +193,18 @@ export default function Today() {
     await journey.refresh();
   };
 
+  const startNightMusic = async () => {
+    const enabled = (commutePlaylists ?? []).filter((p) => !p.deleted && p.enabled);
+    const preferred = enabled.find((p) => p.systemKey === 'night');
+    if (!preferred) return;
+    const tracks = (commuteTracks ?? []).filter((t) => !t.deleted && t.playlistId === preferred.id);
+    if (!tracks.length) return;
+    const config = await getMusicConfig();
+    const queue = buildQueue(tracks, { shuffle: true, config, lastTrackId: musicPlayer.lastTrackId });
+    musicPlayer.setQueue(queue, 0);
+    await musicPlayer.playTrackAt(0);
+  };
+
   const startCommuteMusic = async () => {
     const enabled = (commutePlaylists ?? []).filter((p) => !p.deleted && p.enabled);
     const preferred = enabled.find((p) => p.systemKey === 'commute') ?? enabled[0];
