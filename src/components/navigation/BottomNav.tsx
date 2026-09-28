@@ -1,34 +1,22 @@
 import { NavLink } from 'react-router-dom';
-import { useState } from 'react';
-import { ModuleDrawer } from './ModuleDrawer';
+
+const items = [
+  { to: '/today', label: 'Daily Flow', icon: '◉' },
+  { to: '/activity-log', label: 'Activity Log', icon: '◷' },
+  { to: '/spending', label: 'Spending', icon: '₹' },
+  { to: '/insights', label: 'Insights', icon: '◌' },
+  { to: '/settings', label: 'Settings', icon: '⚙' },
+];
 
 export function BottomNav() {
-  const [drawerOpen, setDrawerOpen] = useState(false);
-
   return (
-    <>
-      <nav className="bottom-nav">
-        <NavLink to="/" end className={({ isActive }) => `bottom-nav__item ${isActive ? 'bottom-nav__item--active' : ''}`}>
-          <span>⌂</span>
-          Home
+    <nav className="bottom-nav bottom-nav--five" aria-label="Primary navigation">
+      {items.map((item) => (
+        <NavLink key={item.to} to={item.to} className={({ isActive }) => `bottom-nav__item ${isActive ? 'bottom-nav__item--active' : ''}`}>
+          <span className="bottom-nav__icon">{item.icon}</span>
+          <span>{item.label}</span>
         </NavLink>
-        <NavLink to="/today" className={({ isActive }) => `bottom-nav__item ${isActive ? 'bottom-nav__item--active' : ''}`}>
-          <span>☀</span>
-          Today
-        </NavLink>
-        <button className="bottom-nav__fab" onClick={() => setDrawerOpen(true)} aria-label="All modules">
-          ▦
-        </button>
-        <NavLink to="/progress" className={({ isActive }) => `bottom-nav__item ${isActive ? 'bottom-nav__item--active' : ''}`}>
-          <span>◐</span>
-          Progress
-        </NavLink>
-        <NavLink to="/settings" className={({ isActive }) => `bottom-nav__item ${isActive ? 'bottom-nav__item--active' : ''}`}>
-          <span>⚙</span>
-          Settings
-        </NavLink>
-      </nav>
-      {drawerOpen && <ModuleDrawer onClose={() => setDrawerOpen(false)} />}
-    </>
+      ))}
+    </nav>
   );
 }

@@ -19,12 +19,16 @@ import { SpinTimer } from '../spin/SpinTimer';
 import { planSpinDuration, formatMinutes, DEFAULT_CUTOFF_HM } from '../spin/timeBudget';
 import { formatIsoTime12 } from '../lib/timeFormat';
 import { continueSuggestion } from '../entertainment/continue';
+import { getDemoDate } from '../demo/DemoTools';
+import { useActiveDayProfile } from '../day/hooks';
 import '../spin/spin.css';
 
 type Tab = 'spin' | 'wheels' | 'history';
 
 export default function Spin() {
   const [tab, setTab] = useState<Tab>('spin');
+  const { profile } = useActiveDayProfile(getDemoDate());
+  const spinCutoff = profile?.systemKey === 'rest' || profile?.systemKey === 'sunday' ? '20:00' : profile?.systemKey === 'bunk' || profile?.systemKey === 'event' ? '19:30' : DEFAULT_CUTOFF_HM;
   const [seeded, setSeeded] = useState(false);
   const [currentWheelId, setCurrentWheelId] = useState<string | null>(null);
   const [path, setPath] = useState<string[]>([]);
@@ -48,7 +52,7 @@ export default function Spin() {
   );
   const history = useLiveQuery(
     async () => {
-      const todayIso = toIsoDate(new Date());
+      const todayIso = toIsoDate(getDemoDate());
       const r = await spinHistoriesRepo.list();
       return r
         .filter((h) => !h.deleted && h.date === todayIso)
@@ -84,7 +88,8 @@ export default function Spin() {
     if (activeHistoryId || (timerMinutes != null && timerMinutes > 0)) return;
     // Must resolve leaf result first (no skipping)
     if (result && !result.childWheelId) return;
-    const eligible = eligibleOptions(currentWheel);
+    const demoNow = getDemoDate();
+    const eligible = eligibleOptions(currentWheel, demoNow.getHours() * 60 + demoNow.getMinutes());
     if (eligible.length === 0) {
       setResult(null);
       return;
@@ -145,18 +150,18 @@ export default function Spin() {
         }
       }
 
-      const now = new Date();
-      const budget = planSpinDuration(optionDuration, now, DEFAULT_CUTOFF_HM);
+      const now = getDemoDate();
+      const budget = planSpinDuration(optionDuration, now, spinCutoff);
       const planned = budget.plannedMinutes;
 
       if (budget.capped) {
         setBudgetNote(
-          `Capped to ${formatMinutes(planned)} (until ${DEFAULT_CUTOFF_HM} — had ${formatMinutes(optionDuration ?? 0)} on the option)`
+          `Capped to ${formatMinutes(planned)} (until ${spinCutoff} — had ${formatMinutes(optionDuration ?? 0)} on the option)`
         );
       } else if (budget.remainingUntilCutoff > 0) {
-        setBudgetNote(`${formatMinutes(budget.remainingUntilCutoff)} left until ${DEFAULT_CUTOFF_HM}`);
+        setBudgetNote(`${formatMinutes(budget.remainingUntilCutoff)} left until ${spinCutoff}`);
       } else {
-        setBudgetNote(`Past ${DEFAULT_CUTOFF_HM} — logging real time only`);
+        setBudgetNote(`Past ${spinCutoff} — logging real time only`);
       }
 
       const startedAt = now.toISOString();
@@ -185,14 +190,14 @@ export default function Spin() {
         setTimerMinutes(null);
         return;
       }
-      const endedAt = new Date().toISOString();
+      const endedAt = getDemoDate().toISOString();
       const rows = await spinHistoriesRepo.list();
       const row = rows.find((h) => h.id === activeHistoryId);
       let actual = actualMinutes;
       if (actual == null && row?.startedAt) {
         actual = Math.max(
           1,
-          Math.round((Date.now() - new Date(row.startedAt).getTime()) / 60000)
+          Math.round((getDemoDate().getTime() - new Date(row.startedAt).getTime()) / 60000)
         );
       }
       await spinHistoriesRepo.update(activeHistoryId, {
@@ -343,7 +348,8 @@ export default function Spin() {
       );
     }
 
-    const eligible = eligibleOptions(currentWheel);
+    const demoNow = getDemoDate();
+    const eligible = eligibleOptions(currentWheel, demoNow.getHours() * 60 + demoNow.getMinutes());
     const hidden = (currentWheel.options ?? []).filter((o) => o.enabled).length - eligible.length;
 
     return (
@@ -422,7 +428,7 @@ export default function Spin() {
                       if (!result || !currentWheel) return;
                       setBusy(true);
                       try {
-                        const now = new Date();
+                        const now = getDemoDate();
                         const hours = 3;
                         const mins = hours * 60;
                         const started = new Date(now.getTime() - mins * 60000);
@@ -771,7 +777,7 @@ export default function Spin() {
   }
 
   function renderHistory() {
-    const todayIso = toIsoDate(new Date());
+    const todayIso = toIsoDate(getDemoDate());
     const list = (history ?? []).filter((h) => !h.deleted && h.date === todayIso).filter((h) => (h.actualMinutes ?? h.durationMinutes ?? 0) <= 12 * 60);
     if (list.length === 0) {
       return (

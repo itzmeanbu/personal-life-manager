@@ -36,7 +36,7 @@ const DEFAULT_PHASES: SeedPhase[] = [
   {
     name: 'Workout',
     icon: '🏋️',
-    order: 2,
+    order: 3,
     enabled: true,
     moduleTags: ['workout'],
     categories: [],
@@ -45,7 +45,7 @@ const DEFAULT_PHASES: SeedPhase[] = [
   {
     name: 'Spin & Free Time',
     icon: '🎡',
-    order: 3,
+    order: 2,
     enabled: true,
     moduleTags: ['spin'],
     categories: [],
@@ -90,6 +90,12 @@ export function seedDefaultPhasesIfNeeded(): Promise<void> {
 /** One-time migration: ensure Spin phase exists even if phases were already seeded. */
 export async function ensureSpinPhaseExists(): Promise<void> {
   const all = await phasesRepo.list();
+  const spin = all.find((p) => !p.deleted && (p.moduleTags?.includes('spin') || /spin/i.test(p.name)));
+  const workout = all.find((p) => !p.deleted && p.moduleTags?.includes('workout'));
+  if (spin && workout && spin.order > workout.order) {
+    await phasesRepo.update(spin.id, { order: workout.order });
+    await phasesRepo.update(workout.id, { order: spin.order });
+  }
   const hasSpin = all.some(
     (p) => !p.deleted && (p.moduleTags?.includes('spin') || /spin/i.test(p.name))
   );
@@ -97,7 +103,7 @@ export async function ensureSpinPhaseExists(): Promise<void> {
   await phasesRepo.create({
     name: 'Spin & Free Time',
     icon: '🎡',
-    order: 3,
+    order: 2,
     enabled: true,
     moduleTags: ['spin'],
     categories: [],

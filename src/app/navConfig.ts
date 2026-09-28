@@ -16,6 +16,9 @@ export interface ModuleDef {
 
 const Home = lazy(() => import('../pages/Home'));
 const Today = lazy(() => import('../pages/Today'));
+const ActivityLog = lazy(() => import('../pages/ActivityLog'));
+const Spending = lazy(() => import('../pages/Spending'));
+const Insights = lazy(() => import('../pages/Insights'));
 const RoutineManager = lazy(() => import('../pages/RoutineManager'));
 const College = lazy(() => import('../pages/College'));
 const Workout = lazy(() => import('../pages/Workout'));
@@ -46,7 +49,10 @@ const SpecialDays = lazy(() => import('../pages/SpecialDays'));
  * here instead of three separate places to keep in sync.
  */
 export const MODULES: ModuleDef[] = [
-  { id: 'today', label: 'Day Brief', path: '/today', emoji: '📅', monogram: 'TD', colorVar: '--mod-today', Component: Today },
+  { id: 'today', label: 'Daily Flow', path: '/today', emoji: '◉', monogram: 'DF', colorVar: '--mod-today', Component: Today },
+  { id: 'activity-log', label: 'Activity Log', path: '/activity-log', emoji: '◷', monogram: 'AL', colorVar: '--mod-progress', Component: ActivityLog },
+  { id: 'spending', label: 'Spending', path: '/spending', emoji: '₹', monogram: 'SP', colorVar: '--mod-money', Component: Spending },
+  { id: 'insights', label: 'Insights', path: '/insights', emoji: '◌', monogram: 'IN', colorVar: '--mod-progress', Component: Insights },
   { id: 'routines', label: 'Routines', path: '/routines', emoji: '📋', monogram: 'RT', colorVar: '--mod-routines', Component: RoutineManager },
   { id: 'college', label: 'College', path: '/college', emoji: '🎓', monogram: 'CG', colorVar: '--mod-college', emphasizeOnDays: [1, 2, 3, 4, 5], Component: College },
   { id: 'workout', label: 'Workout', path: '/workout', emoji: '🏋️', monogram: 'WK', colorVar: '--mod-workout', Component: Workout },

@@ -24,7 +24,7 @@ type SeedProfile = Omit<DayProfile, keyof import('../data/types').BaseEntity | '
 
 const DEFAULTS: SeedProfile[] = [
   {
-    name: 'Normal College Day',
+    name: 'Academic Day',
     icon: '🎓',
     description: 'Default weekday: college → bus → home ~7–7:30 PM.',
     enabled: true,
@@ -36,7 +36,7 @@ const DEFAULTS: SeedProfile[] = [
     }),
   },
   {
-    name: 'Bunk Day',
+    name: 'Partial Attendance Day',
     icon: '🏃',
     description: 'Home early. Afternoon free for skills, coding, games, social.',
     enabled: true,
@@ -94,7 +94,7 @@ const DEFAULTS: SeedProfile[] = [
     }),
   },
   {
-    name: 'Hackathon Day',
+    name: 'Build Sprint Day',
     icon: '💻',
     description: 'Laptop, charger, project, event, food outside, late return.',
     enabled: true,
@@ -130,7 +130,7 @@ const DEFAULTS: SeedProfile[] = [
     }),
   },
   {
-    name: 'Event Day',
+    name: 'Campus Function Day',
     icon: '🎉',
     description: 'Campus or external event — travel and timing differ from normal.',
     enabled: true,
@@ -150,7 +150,7 @@ const DEFAULTS: SeedProfile[] = [
     }),
   },
   {
-    name: 'Rest Day',
+    name: 'Recovery Day',
     icon: '🛋️',
     description: 'Spin wheel day — free time, no college pressure.',
     enabled: true,
@@ -195,7 +195,7 @@ const DEFAULTS: SeedProfile[] = [
     }),
   },
   {
-    name: 'Stay-Out Day',
+    name: 'Extended Stay Day',
     icon: '🌙',
     description: 'Staying out late or overnight — home routines deferred.',
     enabled: true,
