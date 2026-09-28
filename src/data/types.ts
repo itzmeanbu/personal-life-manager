@@ -556,7 +556,7 @@ export interface WatchlistItem extends BaseEntity {
 export interface MusicPlaylist extends BaseEntity {
   name: string;
   /** systemKey for seeded playlists; null for user-created. */
-  systemKey?: 'workout' | 'night' | null;
+  systemKey?: 'workout' | 'night' | 'bus_english' | 'bus_tamil' | null;
   enabled: boolean;
   order: number;
   shuffleDefault: boolean;
