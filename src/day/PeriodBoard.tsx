@@ -7,7 +7,6 @@ import { Button } from '../components/ui/Button';
 import { toIsoDate } from '../routine/engine';
 import { formatHm12 } from '../lib/timeFormat';
 import {
-  TIME_SLOTS,
   currentTimeSlot,
   liveClassLine,
   scheduleForDayOrder,
@@ -21,7 +20,6 @@ import {
 import { getTomorrowOrder, type TomorrowDayOrder } from './spendPrompts';
 import { collegeDayStatusesRepo } from '../data/repository';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { getDemoDate } from '../demo/DemoTools';
 
 function modeLabel(
   order: TomorrowDayOrder | 'attended' | 'bunked' | 'none' | null
@@ -61,7 +59,7 @@ export function PeriodBoard({ date = new Date() }: { date?: Date }) {
   }, [iso]);
 
   void tick;
-  const slot = currentTimeSlot(getDemoDate());
+  const slot = currentTimeSlot(new Date());
 
   const statusFromCollege =
     college?.status === 'bunked'
@@ -69,18 +67,11 @@ export function PeriodBoard({ date = new Date() }: { date?: Date }) {
       : college?.status === 'attended'
         ? 'attended'
         : null;
-  const mode =
+  const mode: TomorrowDayOrder | 'attended' | 'bunked' | null =
     fromNight && fromNight !== 'unset' ? fromNight : statusFromCollege;
 
-  const isCollegeDay =
-    mode === 'college' ||
-    mode === 'attended' ||
-    mode === null ||
-    mode === 'unset' ||
-    (mode !== 'bunk' && mode !== 'bunked' && mode !== 'leave' && mode !== 'coimbatore_stay');
-
   const showTimetable =
-    isCollegeDay && mode !== 'bunk' && mode !== 'bunked' && mode !== 'leave';
+    mode === null || mode === 'college' || mode === 'attended';
 
   const pickOrder = async (n: number) => {
     await setDayOrderForDate(iso, n);
