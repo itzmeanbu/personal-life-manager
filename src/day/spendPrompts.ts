@@ -3,6 +3,7 @@
  * Answers log into moneyTransactions (same store as Money module).
  */
 import { getSetting, setSetting } from '../data/settings';
+import { appNow } from '../demo/appClock';
 import { moneyTransactionsRepo, collegeDayStatusesRepo } from '../data/repository';
 
 const STATE_KEY = 'day.spendPrompts.v1';
@@ -117,7 +118,7 @@ export async function setSpendPromptsState(state: SpendPromptsState): Promise<vo
   await setSetting(STATE_KEY, state);
 }
 
-export function minutesNow(d = new Date()): number {
+export function minutesNow(d = appNow()): number {
   return d.getHours() * 60 + d.getMinutes();
 }
 

@@ -1,3 +1,4 @@
+import { appNow } from '../demo/appClock';
 /**
  * Morning-only: "Did you eat?" (breakfast is part of the morning routine).
  * Window is before leave-home on weekdays (05:00–07:00) so it never asks
@@ -42,7 +43,7 @@ export function MealPrompt({ date = new Date() }: { date?: Date }) {
   useEffect(() => {
     void (async () => {
       const s = await getMealGate(iso);
-      if (shouldAlertEat(new Date(), s)) {
+      if (shouldAlertEat(appNow(), s)) {
         try {
           if ('Notification' in window && Notification.permission === 'granted') {
             new Notification('Time to eat', { body: `You said ${s.eatAtHm}` });
@@ -63,7 +64,7 @@ export function MealPrompt({ date = new Date() }: { date?: Date }) {
 
   if (!state) return null;
 
-  const now = new Date();
+  const now = appNow();
   const ask = shouldAskMeal(now, state);
   const free = isFreeTimeUnlocked(now, state);
 

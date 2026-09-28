@@ -24,6 +24,7 @@ import {
   type DayAsksState,
 } from './dayAsks';
 import { notify, getWellnessDay, setWellnessDay } from './wellness';
+import { appNow } from '../demo/appClock';
 import { getTomorrowOrder, getWakeTimeMinutes } from './spendPrompts';
 
 function addDaysIso(iso: string, days: number): string {
@@ -84,7 +85,7 @@ export function DayAsksCard({
   // Morning notification once per day when morning window opens
   useEffect(() => {
     void (async () => {
-      const now = new Date();
+      const now = appNow();
       const wakeMin = await getWakeTimeMinutes(iso);
       if (!isSlotActive('morning', now, wakeMin)) return;
       const s = await getWellnessDay(iso);
@@ -102,7 +103,7 @@ export function DayAsksCard({
   }, [iso]);
 
   const dismissed = state?.dismissed?.[slot];
-  const slotActive = isSlotActive(slot, new Date(), morningStartMin);
+  const slotActive = isSlotActive(slot, appNow(), morningStartMin);
   const pending = slotActive || slot !== 'night'
     ? items.filter((i) => !state?.done[i.id])
     : [];
@@ -163,7 +164,7 @@ export function DayAsksCard({
       {!forceSlot && (
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
           {(['morning', 'leave', 'night'] as AskSlot[]).map((s) => {
-            const active = isSlotActive(s, new Date(), morningStartMin);
+            const active = isSlotActive(s, appNow(), morningStartMin);
             return (
               <Button
                 key={s}
@@ -189,7 +190,7 @@ export function DayAsksCard({
       >
         {slotHint(slot)} · Yes removes the item · {doneCount}/{items.length} done
       </p>
-      {!isSlotActive(slot, new Date(), morningStartMin) && slot === 'night' && (
+      {!isSlotActive(slot, appNow(), morningStartMin) && slot === 'night' && (
         <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
           Night checklist unlocks after 8:00 PM.
         </p>

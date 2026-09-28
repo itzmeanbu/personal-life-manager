@@ -1,24 +1,30 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { getDemoDate, subscribeDemoDay, isDemoTimeActive } from '../demo/DemoTools';
 
 /**
- * A ticking "now" that stays consistent with the app clock: it starts from
- * `base` (useToday's date, which the demo tools can override) and advances
- * with real time. Re-renders every `everyMs`.
+ * App "now" — always follows DEMO clock when set, otherwise real time.
  */
-export function useNow(base: Date, everyMs = 30_000): Date {
-  const [, setTick] = useState(0);
-  const baseMs = base.getTime();
-  const anchor = useRef({ base: baseMs, real: Date.now() });
+export function useNow(_base?: Date, everyMs = 15_000): Date {
+  const [now, setNow] = useState(() => getDemoDate());
 
   useEffect(() => {
-    anchor.current = { base: baseMs, real: Date.now() };
-    setTick((t) => t + 1);
-  }, [baseMs]);
-
-  useEffect(() => {
-    const id = window.setInterval(() => setTick((t) => t + 1), everyMs);
-    return () => window.clearInterval(id);
+    const refresh = () => setNow(getDemoDate());
+    refresh();
+    const unsub = subscribeDemoDay(refresh);
+    const id = window.setInterval(refresh, everyMs);
+    return () => {
+      unsub();
+      window.clearInterval(id);
+    };
   }, [everyMs]);
 
-  return new Date(anchor.current.base + (Date.now() - anchor.current.real));
+  return now;
+}
+
+export function useDemoClockActive(): boolean {
+  const [active, setActive] = useState(() => isDemoTimeActive());
+  useEffect(() => {
+    return subscribeDemoDay(() => setActive(isDemoTimeActive()));
+  }, []);
+  return active;
 }

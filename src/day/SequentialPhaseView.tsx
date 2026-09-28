@@ -25,6 +25,7 @@ import { getDayOrderForDate } from '../college/dayOrder';
 import { liveClassLine, TIME_SLOTS } from '../college/timetable';
 import { formatHm12 } from '../lib/timeFormat';
 import { minToHm } from './timeline';
+import { subscribeDemoDay } from '../demo/DemoTools';
 
 export function SequentialPhaseView({
   date = new Date(),
@@ -55,7 +56,11 @@ export function SequentialPhaseView({
     void reload();
     const on = () => void reload();
     window.addEventListener('phase-seq-changed', on);
-    return () => window.removeEventListener('phase-seq-changed', on);
+    const unsub = subscribeDemoDay(on);
+    return () => {
+      window.removeEventListener('phase-seq-changed', on);
+      unsub();
+    };
   }, [reload]);
 
   const done = async () => {
