@@ -24,6 +24,19 @@ import {
   type DayAsksState,
 } from './dayAsks';
 import { notify, getWellnessDay, setWellnessDay } from './wellness';
+import { getTomorrowOrder, getWakeTimeMinutes } from './spendPrompts';
+
+function addDaysIso(iso: string, days: number): string {
+  const d = new Date(iso + 'T12:00:00');
+  d.setDate(d.getDate() + days);
+  return toIsoDate(d);
+}
+
+/** Client-side only extras injected into the night checklist — never in DEFAULT_ASKS. */
+const COIMBATORE_NIGHT_EXTRAS: AskItem[] = [
+  { id: 'n_pack_clothes', label: 'Pack extra clothes', enabled: true },
+  { id: 'n_pack_kit', label: 'Pack face/hair travel kit', enabled: true },
+];
 
 export function DayAsksCard({ date = new Date() }: { date?: Date }) {
   const iso = toIsoDate(date);
@@ -34,10 +47,20 @@ export function DayAsksCard({ date = new Date() }: { date?: Date }) {
   const [newLabel, setNewLabel] = useState('');
   const [adding, setAdding] = useState(false);
   const [showDone, setShowDone] = useState(false);
+  const [morningStartMin, setMorningStartMin] = useState(5 * 60);
 
   const reload = useCallback(async () => {
     setState(await getDayAsks(iso));
-    const list = await itemsForSlot(slot);
+    setMorningStartMin(await getWakeTimeMinutes(iso));
+
+    let list = await itemsForSlot(slot);
+    if (slot === 'night') {
+      const tomorrowIso = addDaysIso(iso, 1);
+      const tomorrow = await getTomorrowOrder(tomorrowIso);
+      if (tomorrow?.order === 'coimbatore_stay') {
+        list = [...list, ...COIMBATORE_NIGHT_EXTRAS];
+      }
+    }
     setItems(list);
     const custom = await getCustomAsks();
     setCustomIds(new Set(custom[slot].map((i) => i.id)));
@@ -55,7 +78,8 @@ export function DayAsksCard({ date = new Date() }: { date?: Date }) {
   useEffect(() => {
     void (async () => {
       const now = new Date();
-      if (!isSlotActive('morning', now)) return;
+      const wakeMin = await getWakeTimeMinutes(iso);
+      if (!isSlotActive('morning', now, wakeMin)) return;
       const s = await getWellnessDay(iso);
       if (s.notified?.morningAsks) return;
       const asksState = await getDayAsks(iso);
@@ -71,7 +95,7 @@ export function DayAsksCard({ date = new Date() }: { date?: Date }) {
   }, [iso]);
 
   const dismissed = state?.dismissed?.[slot];
-  const slotActive = isSlotActive(slot, new Date());
+  const slotActive = isSlotActive(slot, new Date(), morningStartMin);
   const pending = slotActive || slot !== 'night'
     ? items.filter((i) => !state?.done[i.id])
     : [];
@@ -121,7 +145,7 @@ export function DayAsksCard({ date = new Date() }: { date?: Date }) {
     <Card style={{ marginBottom: 12 }}>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
         {(['morning', 'leave', 'night'] as AskSlot[]).map((s) => {
-          const active = isSlotActive(s, new Date());
+          const active = isSlotActive(s, new Date(), morningStartMin);
           return (
             <Button
               key={s}
@@ -146,7 +170,7 @@ export function DayAsksCard({ date = new Date() }: { date?: Date }) {
       >
         {slotHint(slot)} · Yes removes the item · {doneCount}/{items.length} done
       </p>
-      {!isSlotActive(slot, new Date()) && slot === 'night' && (
+      {!isSlotActive(slot, new Date(), morningStartMin) && slot === 'night' && (
         <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
           Night checklist unlocks after 8:00 PM.
         </p>

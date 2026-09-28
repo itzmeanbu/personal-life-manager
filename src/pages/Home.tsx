@@ -2,7 +2,7 @@
  * Day Journey — current phase only. Completed checklist items vanish.
  * Spin phase gets a big CTA. End-of-day asks what tomorrow looks like.
  */
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router-dom';
 import { Card } from '../components/ui/Card';
@@ -21,6 +21,8 @@ import {
 } from '../home/encourage';
 import { MealPrompt } from '../day/MealPrompt';
 import { DayAsksCard } from '../day/DayAsksCard';
+import { DayBriefBody } from '../day/DayBriefBody';
+import { effectiveDayStatus } from '../day/spendPrompts';
 import { getContinueCandidates } from '../entertainment/continue';
 import { dayAssignmentsRepo } from '../data/repository';
 import { toIsoDate } from '../routine/engine';
@@ -48,6 +50,18 @@ export default function Home() {
   const { profile } = useActiveDayProfile(today.date);
   const homeArrival = useHomeArrival();
   const nudgeText = useMemo(() => pickEncouragement(today.isWeekend ? 'weekend' : 'general'), [today.isWeekend]);
+  const [codingDay, setCodingDay] = useState(false);
+  useEffect(() => {
+    const load = () =>
+      void effectiveDayStatus(toIsoDate(today.date)).then((s) => setCodingDay(s === 'coding'));
+    load();
+    const onChange = () => {
+      load();
+      void refresh();
+    };
+    window.addEventListener('day-status-changed', onChange);
+    return () => window.removeEventListener('day-status-changed', onChange);
+  }, [today.date, refresh]);
   const continueWatch = useLiveQuery(() => getContinueCandidates(2), [], []);
   const [savingTomorrow, setSavingTomorrow] = useState(false);
   const [tomorrowSaved, setTomorrowSaved] = useState<string | null>(null);
@@ -193,14 +207,17 @@ export default function Home() {
               Load today's journey
             </Button>
           </Card>
+          <DayAsksCard date={today.date} />
+          <MealPrompt date={today.date} />
           {today.isWeekend && (
             <Card style={{ textAlign: 'center' }}>
               <p style={{ margin: '0 0 12px' }}>Or jump straight to the wheel</p>
-              <Link to="/spin">
+              {!codingDay && (<Link to="/spin">
                 <Button variant="secondary">Open Spin Wheel</Button>
-              </Link>
+              </Link>)}
             </Card>
           )}
+          <DayBriefBody date={today.date} />
         </div>
       </div>
     );
@@ -242,9 +259,9 @@ export default function Home() {
             </p>
             <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {today.isWeekend && (
-                <Link to="/spin">
+                {!codingDay && (<Link to="/spin">
                   <Button variant="secondary">Open Spin Wheel</Button>
-                </Link>
+                </Link>)}
               )}
               <Button
                 variant="ghost"
@@ -257,6 +274,9 @@ export default function Home() {
               </Button>
             </div>
           </Card>
+
+          <DayAsksCard date={today.date} />
+          <MealPrompt date={today.date} />
 
           <h2 style={{ fontSize: 'var(--text-base)', margin: '0 0 8px' }}>
             What’s tomorrow?
@@ -306,6 +326,8 @@ export default function Home() {
               <Button variant="ghost">Settings</Button>
             </Link>
           </div>
+
+          <DayBriefBody date={today.date} />
         </div>
       </div>
     );
@@ -453,9 +475,9 @@ export default function Home() {
                 : 'Spin for K-drama, games, coding, or rest. Finish each spin before the next.'}
             </p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Link to="/spin">
+              {!codingDay && (<Link to="/spin">
                 <Button variant="primary">Open Spin Wheel</Button>
-              </Link>
+              </Link>)}
               <Button variant="secondary" onClick={finishSpinPhase}>
                 Done with free time →
               </Button>
@@ -587,6 +609,8 @@ export default function Home() {
             <Button variant="ghost">Settings & modules</Button>
           </Link>
         </div>
+
+        <DayBriefBody date={today.date} />
       </div>
     </div>
   );

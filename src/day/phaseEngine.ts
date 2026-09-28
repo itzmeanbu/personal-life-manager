@@ -12,6 +12,7 @@ import {
 } from '../data/repository';
 import type { Phase, DayProgress, Routine, CompletionRecord, DayProfile } from '../data/types';
 import { toIsoDate, isRoutineScheduledOnDate, sortRoutines } from '../routine/engine';
+import { effectiveDayStatus, statusSkipsCollege, CODING_SKIPPED_TAGS } from './spendPrompts';
 
 /** True for free-time / spin style phases that don't need routine rows. */
 export function isActionPhase(phase: Phase): boolean {
@@ -86,10 +87,22 @@ export async function resolveProfileForDate(date: Date): Promise<DayProfile | nu
   return null;
 }
 
+/**
+ * Canonical day status for a date — set anytime via the PeriodBoard status
+ * switcher (same-day) or TomorrowOrderCard (night-before). This is the
+ * single source of truth for whether college phases run today; it is read
+ * independently of the DayProfile/DayAssignment system below, which still
+ * covers unrelated day types (rest, holiday, hackathon, exam, …).
+ */
+export async function resolveDayStatus(iso: string) {
+  return effectiveDayStatus(iso);
+}
+
 /** Ordered list of phases that apply on this date. */
 export async function resolvePhasesForDate(date: Date): Promise<Phase[]> {
   const all = (await phasesRepo.list()).filter((p) => p.enabled && !p.deleted);
   const dayIndex = date.getDay();
+  const iso = toIsoDate(date);
   const sorted = [...all].sort((a, b) => a.order - b.order);
   const profile = await resolveProfileForDate(date);
   const effects = profile?.effects;
@@ -102,6 +115,15 @@ export async function resolvePhasesForDate(date: Date): Promise<Phase[]> {
     profile?.systemKey === 'family_function';
   const forceSpinDay = isLegacyBunkProfile || profile?.systemKey === 'rest';
 
+  // Unified day status (leave / bunk / didnt_go / coimbatore_stay) also skips
+  // the College phase, independent of which DayProfile (if any) is active.
+  // NOTE: coimbatore_stay does not yet swap in an "away from home" variant
+  // of Evening/Sleep — there's no separate phase content for that yet, so
+  // it currently just skips College like the others.
+  const dayStatus = await resolveDayStatus(iso);
+  const statusSkipsCollegePhase = statusSkipsCollege(dayStatus);
+  const isCoding = dayStatus === 'coding';
+
   const routines = await routinesRepo.list();
   const applicable: Phase[] = [];
   for (const phase of sorted) {
@@ -113,6 +135,13 @@ export async function resolvePhasesForDate(date: Date): Promise<Phase[]> {
     }
     // Rest/holiday/family function: skip college phase structure when appropriate
     if (isRest && !isLegacyBunkProfile && phase.moduleTags?.includes('college')) {
+      continue;
+    }
+    if (statusSkipsCollegePhase && phase.moduleTags?.includes('college')) {
+      continue;
+    }
+    // Coding day: everything else stays, but no activities (guitar/workout/spin wheel).
+    if (isCoding && phase.moduleTags?.some((t) => CODING_SKIPPED_TAGS.includes(t))) {
       continue;
     }
 

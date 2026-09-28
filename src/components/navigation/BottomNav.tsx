@@ -9,10 +9,6 @@ export function BottomNav() {
     <>
       <nav className="bottom-nav">
         <NavLink to="/" end className={({ isActive }) => `bottom-nav__item ${isActive ? 'bottom-nav__item--active' : ''}`}>
-          <span>⌂</span>
-          Home
-        </NavLink>
-        <NavLink to="/today" className={({ isActive }) => `bottom-nav__item ${isActive ? 'bottom-nav__item--active' : ''}`}>
           <span>☀</span>
           Today
         </NavLink>

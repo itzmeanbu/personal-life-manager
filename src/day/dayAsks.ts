@@ -76,12 +76,18 @@ export function slotHint(slot: AskSlot): string {
   }
 }
 
-/** When each slot is allowed to show + notify. */
-export function isSlotActive(slot: AskSlot, now = new Date()): boolean {
+/**
+ * When each slot is allowed to show + notify.
+ * `morningStartMin` defaults to 05:00 but should be passed as the day's
+ * logged wake time (see spendPrompts.getWakeTimeMinutes) once known, so the
+ * morning window starts when the user actually got up instead of a fixed
+ * clock time — same 11:00 end cap either way.
+ */
+export function isSlotActive(slot: AskSlot, now = new Date(), morningStartMin = 5 * 60): boolean {
   const m = now.getHours() * 60 + now.getMinutes();
   switch (slot) {
     case 'morning':
-      return m >= 5 * 60 && m < 11 * 60; // 05:00–11:00
+      return m >= morningStartMin && m < 11 * 60;
     case 'leave':
       return m >= 7 * 60 && m < 14 * 60;
     case 'night':

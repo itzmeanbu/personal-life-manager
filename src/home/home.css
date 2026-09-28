@@ -144,3 +144,52 @@
 .ha-note--warn {
   color: var(--color-warm);
 }
+
+.morning-greeting {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+}
+
+.morning-greeting__sheet {
+  width: 100%;
+  max-width: 480px;
+  max-height: 88vh;
+  overflow-y: auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 20px 20px 0 0;
+  padding: 24px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.morning-greeting__greeting {
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.morning-greeting__day {
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  margin-bottom: 16px;
+}
+
+.morning-greeting__section {
+  margin-bottom: 16px;
+}
+
+.morning-greeting__section ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.morning-greeting__section li {
+  margin-bottom: 4px;
+}

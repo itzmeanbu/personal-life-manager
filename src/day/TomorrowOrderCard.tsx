@@ -7,12 +7,14 @@ import { Button } from '../components/ui/Button';
 import { toIsoDate } from '../routine/engine';
 import {
   getTomorrowOrder,
-  setTomorrowOrder,
+  setDayStatus,
+  effectiveDayStatus,
+  answerCodingFinished,
+  isCodingFinished,
   TOMORROW_OPTIONS,
   type TomorrowDayOrder,
   type TomorrowOrderState,
 } from './spendPrompts';
-import { collegeDayStatusesRepo } from '../data/repository';
 import { setDayOrderForDate, suggestNextDayOrder, getDayOrderForDate } from '../college/dayOrder';
 
 function addDaysIso(iso: string, days: number): string {
@@ -21,7 +23,7 @@ function addDaysIso(iso: string, days: number): string {
   return toIsoDate(d);
 }
 
-export function TomorrowOrderCard({ date = new Date() }: { date?: Date }) {
+function TomorrowPlanInner({ date = new Date() }: { date?: Date }) {
   const todayIso = toIsoDate(date);
   const tomorrowIso = addDaysIso(todayIso, 1);
   const [state, setState] = useState<TomorrowOrderState | null | undefined>(undefined);
@@ -55,7 +57,7 @@ export function TomorrowOrderCard({ date = new Date() }: { date?: Date }) {
       sessionStorage.setItem(key, '1');
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification("Tomorrow's day order", {
-          body: 'College, leave, Coimbatore stay, or bunk? Set it before sleep.',
+          body: 'College, leave, Coimbatore stay, bunk, or coding? Set it before sleep.',
         });
       }
     } catch {
@@ -64,23 +66,8 @@ export function TomorrowOrderCard({ date = new Date() }: { date?: Date }) {
   }, [isNight, state, tomorrowIso, tick]);
 
   const pick = async (order: TomorrowDayOrder) => {
-    const next = await setTomorrowOrder(tomorrowIso, order);
+    const next = await setDayStatus(tomorrowIso, order);
     setState(next);
-
-    if (order === 'bunk' || order === 'college') {
-      const rows = await collegeDayStatusesRepo.list();
-      const existing = rows.find((r) => r.date === tomorrowIso && !r.deleted);
-      if (existing) {
-        await collegeDayStatusesRepo.update(existing.id, {
-          status: order === 'bunk' ? 'bunked' : 'attended',
-        });
-      } else {
-        await collegeDayStatusesRepo.create({
-          date: tomorrowIso,
-          status: order === 'bunk' ? 'bunked' : 'attended',
-        });
-      }
-    }
     setNeedOrder(order === 'college');
   };
 
@@ -160,5 +147,69 @@ export function TomorrowOrderCard({ date = new Date() }: { date?: Date }) {
         </div>
       )}
     </Card>
+  );
+}
+
+/** Night check on a coding day: finished → back to normal tomorrow; not yet → coding continues. */
+function CodingFinishedCard({ date }: { date: Date }) {
+  const todayIso = toIsoDate(date);
+  const [coding, setCoding] = useState(false);
+  const [answer, setAnswer] = useState<'yes' | 'no' | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      setCoding((await effectiveDayStatus(todayIso)) === 'coding');
+      const done = await isCodingFinished(todayIso);
+      const tomorrow = await getTomorrowOrder(addDaysIso(todayIso, 1));
+      setAnswer(done ? 'yes' : tomorrow?.order === 'coding' ? 'no' : null);
+    })();
+  }, [todayIso]);
+
+  const hour = new Date().getHours();
+  if (!coding || !(hour >= 19 || hour < 5)) return null;
+
+  const answerIt = async (finished: boolean) => {
+    await answerCodingFinished(todayIso, finished);
+    setAnswer(finished ? 'yes' : 'no');
+  };
+
+  return (
+    <Card style={{ marginBottom: 12, borderLeft: '3px solid var(--color-accent, #6c9eff)' }}>
+      <strong>💻 Coding finished?</strong>
+      {answer ? (
+        <p style={{ margin: '6px 0 8px', fontSize: 'var(--text-sm)' }}>
+          {answer === 'yes'
+            ? 'Done — tomorrow goes back to a normal day. Pick its mode below.'
+            : 'Not yet — tomorrow continues as a coding day.'}
+        </p>
+      ) : (
+        <p
+          style={{
+            margin: '4px 0 12px',
+            fontSize: 'var(--text-sm)',
+            color: 'var(--color-text-secondary)',
+          }}
+        >
+          Yes ends coding mode. No keeps the same coding-day routine tomorrow.
+        </p>
+      )}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <Button variant={answer === 'yes' ? 'primary' : 'secondary'} onClick={() => answerIt(true)}>
+          Yes, finished
+        </Button>
+        <Button variant={answer === 'no' ? 'primary' : 'secondary'} onClick={() => answerIt(false)}>
+          No, continue
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
+export function TomorrowOrderCard({ date = new Date() }: { date?: Date }) {
+  return (
+    <>
+      <CodingFinishedCard date={date} />
+      <TomorrowPlanInner date={date} />
+    </>
   );
 }

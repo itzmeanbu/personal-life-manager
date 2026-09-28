@@ -3,7 +3,7 @@
  * Answers log into moneyTransactions (same store as Money module).
  */
 import { getSetting, setSetting } from '../data/settings';
-import { moneyTransactionsRepo } from '../data/repository';
+import { moneyTransactionsRepo, collegeDayStatusesRepo } from '../data/repository';
 
 const STATE_KEY = 'day.spendPrompts.v1';
 
@@ -204,48 +204,183 @@ export async function answerSpendAmount(
   return next;
 }
 
-/** Tomorrow day-order selection (night). */
+/**
+ * Canonical day-status selection — settable for ANY date, not just "tonight
+ * for tomorrow". This is the single source of truth for whether a given date
+ * is a college day, and it drives phase inclusion in phaseEngine.ts.
+ *
+ * 'bunk' and 'didnt_go' are IDENTICAL in behavior — only the history label
+ * shown to the user differs (see dayStatusLabel below).
+ */
 export type TomorrowDayOrder =
   | 'college'
   | 'leave'
   | 'coimbatore_stay'
   | 'bunk'
+  | 'didnt_go'
+  | 'coding'
   | 'unset';
 
-const TOMORROW_KEY = 'day.tomorrowOrder.v1';
+/** Stored per-date now (was a single global slot) so it can be edited for any date. */
+const TOMORROW_KEY = 'day.tomorrowOrder.v2';
 
 export interface TomorrowOrderState {
-  /** Date this was set for (the "tomorrow" iso when saved from tonight) */
+  /** Date this status applies to. */
   forDate: string;
   order: TomorrowDayOrder;
   setAt: string;
 }
 
+type DayOrderStateMap = Record<string, TomorrowOrderState>;
+
+async function getDayOrderStateMap(): Promise<DayOrderStateMap> {
+  return (await getSetting<DayOrderStateMap | null>(TOMORROW_KEY, null)) ?? {};
+}
+
 export async function getTomorrowOrder(forDateIso: string): Promise<TomorrowOrderState | null> {
-  const s = await getSetting<TomorrowOrderState | null>(TOMORROW_KEY, null);
-  if (!s || s.forDate !== forDateIso) return null;
-  return s;
+  const map = await getDayOrderStateMap();
+  return map[forDateIso] ?? null;
 }
 
 export async function setTomorrowOrder(
   forDateIso: string,
   order: TomorrowDayOrder
 ): Promise<TomorrowOrderState> {
+  const map = await getDayOrderStateMap();
   const next: TomorrowOrderState = {
     forDate: forDateIso,
     order,
     setAt: new Date().toISOString(),
   };
-  await setSetting(TOMORROW_KEY, next);
+  map[forDateIso] = next;
+  await setSetting(TOMORROW_KEY, map);
   return next;
 }
 
+/** Night prompt (planning TOMORROW only) — no 'didnt_go', that only makes sense same-day. */
 export const TOMORROW_OPTIONS: { id: TomorrowDayOrder; label: string; emoji: string }[] = [
   { id: 'college', label: 'College', emoji: '🎓' },
   { id: 'leave', label: 'Leave / holiday', emoji: '🏠' },
   { id: 'coimbatore_stay', label: 'Coimbatore stay', emoji: '🌆' },
   { id: 'bunk', label: 'Bunk day', emoji: '🏃' },
+  { id: 'coding', label: 'Coding', emoji: '💻' },
 ];
+
+/** Status switcher options — editable any time, for any date (incl. same-day). */
+export const DAY_STATUS_OPTIONS: { id: TomorrowDayOrder; label: string; emoji: string }[] = [
+  { id: 'college', label: 'Attending', emoji: '🎓' },
+  { id: 'leave', label: 'Leave', emoji: '🏠' },
+  { id: 'bunk', label: 'Bunk', emoji: '🏃' },
+  { id: 'didnt_go', label: "Didn't go", emoji: '🙈' },
+  { id: 'coimbatore_stay', label: 'Coimbatore stay', emoji: '🌆' },
+  { id: 'coding', label: 'Coding', emoji: '💻' },
+];
+
+export function dayStatusLabel(order: TomorrowDayOrder | null | undefined): string {
+  const opt = DAY_STATUS_OPTIONS.find((o) => o.id === order);
+  return opt ? `${opt.emoji} ${opt.label}` : 'Mode not set';
+}
+
+/**
+ * Set the canonical status for a date AND keep collegeDayStatusesRepo in
+ * sync (for existing stats screens that read it directly). Bunk and
+ * didnt_go write the same attendance status — only the note differs.
+ */
+export async function setDayStatus(
+  dateIso: string,
+  order: TomorrowDayOrder
+): Promise<TomorrowOrderState> {
+  const next = await setTomorrowOrder(dateIso, order);
+
+  if (order === 'college' || order === 'bunk' || order === 'didnt_go') {
+    const attendanceStatus = order === 'college' ? 'attended' : 'bunked';
+    const note = order === 'didnt_go' ? "Didn't go" : undefined;
+    const rows = await collegeDayStatusesRepo.list();
+    const existing = rows.find((r) => r.date === dateIso && !r.deleted);
+    if (existing) {
+      await collegeDayStatusesRepo.update(existing.id, {
+        status: attendanceStatus,
+        ...(note ? { notes: note } : {}),
+      });
+    } else {
+      await collegeDayStatusesRepo.create({
+        date: dateIso,
+        status: attendanceStatus,
+        ...(note ? { notes: note } : {}),
+      });
+    }
+  }
+
+  return next;
+}
+
+/** Statuses that mean "no college phase today". */
+export function statusSkipsCollege(order: TomorrowDayOrder | null | undefined): boolean {
+  return (
+    order === 'leave' ||
+    order === 'bunk' ||
+    order === 'didnt_go' ||
+    order === 'coimbatore_stay' ||
+    order === 'coding'
+  );
+}
+
+/** Coding mode: routines run as usual, minus activities (guitar, workout, spin wheel). */
+export const CODING_SKIPPED_TAGS = ['workout', 'spin', 'guitar'];
+export const CODING_SKIPPED_RE = /workout|guitar|spin|gym|exercise/i;
+
+const CODING_DONE_KEY = 'day.codingDone.v1';
+
+async function getCodingDoneMap(): Promise<Record<string, boolean>> {
+  return (await getSetting<Record<string, boolean> | null>(CODING_DONE_KEY, null)) ?? {};
+}
+
+export async function isCodingFinished(dateIso: string): Promise<boolean> {
+  return !!(await getCodingDoneMap())[dateIso];
+}
+
+function addDays(iso: string, n: number): string {
+  const d = new Date(iso + 'T12:00:00');
+  d.setDate(d.getDate() + n);
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
+/**
+ * Night answer to "Coding finished?". Yes → coding ends today, tomorrow is a
+ * normal day. No → tomorrow continues as a coding day.
+ */
+export async function answerCodingFinished(todayIso: string, finished: boolean): Promise<void> {
+  const done = await getCodingDoneMap();
+  if (finished) done[todayIso] = true;
+  else delete done[todayIso];
+  await setSetting(CODING_DONE_KEY, done);
+  const tomorrow = addDays(todayIso, 1);
+  if (!finished) await setTomorrowOrder(tomorrow, 'coding');
+  else {
+    const t = await getTomorrowOrder(tomorrow);
+    if (t?.order === 'coding') await setTomorrowOrder(tomorrow, 'unset');
+  }
+}
+
+/**
+ * Status for a date, with coding carry-over: if nothing is set for the date
+ * and the previous day was coding and never marked finished, coding continues
+ * (so a missed night prompt doesn't silently end a multi-day coding stretch).
+ */
+export async function effectiveDayStatus(
+  dateIso: string,
+  depth = 0
+): Promise<TomorrowDayOrder | null> {
+  const st = await getTomorrowOrder(dateIso);
+  if (st && st.order !== 'unset') return st.order;
+  if (st?.order === 'unset' || depth > 30) return null;
+  const prevIso = addDays(dateIso, -1);
+  const prev = await effectiveDayStatus(prevIso, depth + 1);
+  if (prev === 'coding' && !(await isCodingFinished(prevIso))) return 'coding';
+  return null;
+}
 
 /** Default college period slots (editable later via settings). */
 export interface PeriodSlot {
@@ -276,4 +411,32 @@ export function formatMinHm(min: number): string {
   const h = Math.floor(min / 60);
   const m = min % 60;
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+/** "I'm up" wake time — logged once per date by the Morning Greeting screen. */
+const WAKE_TIME_KEY = 'day.wakeTime.v1';
+
+export interface WakeTimeState {
+  date: string;
+  at: string; // ISO timestamp
+}
+
+export async function getWakeTime(dateIso: string): Promise<WakeTimeState | null> {
+  const s = await getSetting<WakeTimeState | null>(WAKE_TIME_KEY, null);
+  if (!s || s.date !== dateIso) return null;
+  return s;
+}
+
+export async function setWakeTime(dateIso: string): Promise<WakeTimeState> {
+  const next: WakeTimeState = { date: dateIso, at: new Date().toISOString() };
+  await setSetting(WAKE_TIME_KEY, next);
+  return next;
+}
+
+/** Minutes-from-midnight of today's logged wake time, else the 5:00 fallback. */
+export async function getWakeTimeMinutes(dateIso: string): Promise<number> {
+  const s = await getWakeTime(dateIso);
+  if (!s) return 5 * 60;
+  const d = new Date(s.at);
+  return d.getHours() * 60 + d.getMinutes();
 }
