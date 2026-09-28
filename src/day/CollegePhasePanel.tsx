@@ -103,18 +103,7 @@ export function CollegePhasePanel({
         </p>
       </Card>
 
-      {(attending || halfOrBunk) && dayOrder != null && (
-        <Card style={{ marginBottom: 12 }}>
-          <strong>Timetable (order {dayOrder})</strong>
-          <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 'var(--text-sm)' }}>
-            {schedule.slice(0, 10).map(({ slot, line }) => (
-              <li key={slot.id}>
-                {formatHm12(formatMinHm(slot.startMin))} — {line}
-              </li>
-            ))}
-          </ul>
-        </Card>
-      )}
+
 
       {(attending || halfOrBunk) && <PeriodBoard />}
 

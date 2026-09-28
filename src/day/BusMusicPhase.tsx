@@ -1,13 +1,17 @@
 /**
- * Morning / evening bus phase — music only + travel actions.
- * No home checklist, no college controls, no night stuff.
+ * Bus phase = notification-style asks, not a Music app clone.
+ * "Did you enter the bus?" → Yes → random song from Bus English / Bus Tamil plays.
  */
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { pickBusSong } from '../music/busRandom';
-import type { MusicTrack, MusicPlaylist } from '../data/types';
+import { musicPlayer } from '../music/player';
+import { musicTracksRepo } from '../data/repository';
+import { fireOsNotification } from '../notify/engine';
+import { buildQueue } from '../music/shuffle';
+import { getMusicConfig } from '../music/settings';
+import type { MusicTrack } from '../data/types';
 
 export function BusMusicPhase({
   direction,
@@ -16,66 +20,141 @@ export function BusMusicPhase({
   direction: 'morning' | 'evening';
   onArrived: () => void;
 }) {
-  const [playlist, setPlaylist] = useState<MusicPlaylist | null>(null);
+  const [asked, setAsked] = useState(false);
+  const [onBus, setOnBus] = useState(false);
   const [track, setTrack] = useState<MusicTrack | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [playing, setPlaying] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
 
-  const reload = async () => {
-    setLoading(true);
+  useEffect(() => {
+    return musicPlayer.subscribe(() => setPlaying(musicPlayer.playing));
+  }, []);
+
+  // Nudge once when this phase opens
+  useEffect(() => {
+    void fireOsNotification(
+      direction === 'morning' ? 'Bus to college' : 'Bus home',
+      'Did you enter the bus? Open the app and tap Yes for music.'
+    );
+  }, [direction]);
+
+  const startMusic = async () => {
+    setErr(null);
+    setOnBus(true);
+    setAsked(true);
     try {
-      const { playlist: pl, track: tr } = await pickBusSong(track?.id);
-      setPlaylist(pl);
+      const { track: tr, playlist } = await pickBusSong(musicPlayer.lastTrackId);
+      if (!tr) {
+        setErr('No songs in Bus English / Bus Tamil yet — import MP3s in Music once, then come back.');
+        void fireOsNotification('Bus music', 'Add songs to Bus English or Bus Tamil first.');
+        return;
+      }
       setTrack(tr);
-    } finally {
-      setLoading(false);
+      // Build a shuffled queue from the same playlist (or both bus lists)
+      const all = await musicTracksRepo.list();
+      const pool = all.filter(
+        (t) =>
+          !t.deleted &&
+          (playlist ? t.playlistId === playlist.id : true)
+      );
+      const cfg = await getMusicConfig();
+      const queue = buildQueue(pool.length ? pool : [tr], {
+        shuffle: true,
+        config: cfg,
+        lastTrackId: musicPlayer.lastTrackId,
+      });
+      const startIdx = Math.max(0, queue.findIndex((x) => x.id === tr.id));
+      musicPlayer.setQueue(queue.length ? queue : [tr], startIdx >= 0 ? startIdx : 0);
+      await musicPlayer.playTrackAt(startIdx >= 0 ? startIdx : 0);
+      void fireOsNotification('Now playing', tr.title);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not play');
     }
   };
 
-  useEffect(() => {
-    void reload();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [direction]);
+  const skipSong = async () => {
+    const { track: tr } = await pickBusSong(track?.id ?? musicPlayer.lastTrackId);
+    if (!tr) return;
+    setTrack(tr);
+    const all = await musicTracksRepo.list();
+    const pool = all.filter((t) => !t.deleted);
+    const cfg = await getMusicConfig();
+    const queue = buildQueue(pool, { shuffle: true, config: cfg, lastTrackId: track?.id });
+    const idx = queue.findIndex((x) => x.id === tr.id);
+    musicPlayer.setQueue(queue, idx >= 0 ? idx : 0);
+    await musicPlayer.playTrackAt(idx >= 0 ? idx : 0);
+    void fireOsNotification('Next song', tr.title);
+  };
 
   return (
     <div>
-      <Card style={{ marginBottom: 12, textAlign: 'center', padding: '20px 16px' }}>
-        <div style={{ fontSize: 48, marginBottom: 8 }}>🚌</div>
-        <p style={{ fontSize: 'var(--text-lg)', fontWeight: 600, margin: '0 0 6px' }}>
-          {direction === 'morning' ? 'Bus to college' : 'Bus home'}
-        </p>
-        <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', margin: 0 }}>
-          Music phase only — home checklist and college controls are hidden until you arrive.
-        </p>
-      </Card>
-
-      <Card style={{ marginBottom: 12 }}>
-        <div style={{ fontWeight: 600, marginBottom: 8 }}>Random track</div>
-        {loading ? (
-          <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)' }}>
-            Picking from Bus English / Bus Tamil…
+      {!onBus ? (
+        <Card style={{ marginBottom: 12, textAlign: 'center', padding: '24px 16px' }}>
+          <div style={{ fontSize: 40, marginBottom: 8 }}>🚌</div>
+          <p style={{ fontSize: 'var(--text-lg)', fontWeight: 600, margin: '0 0 8px' }}>
+            Did you enter the bus?
           </p>
-        ) : track ? (
-          <>
-            <p style={{ margin: '0 0 4px', fontSize: 'var(--text-base)' }}>{track.title}</p>
-            <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
-              {playlist?.name ?? 'Bus playlist'}
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', margin: '0 0 16px' }}>
+            {direction === 'morning' ? 'Morning ride to college' : 'Evening ride home'}. Yes → random
+            song from your Bus English / Bus Tamil folders.
+          </p>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Button variant="primary" onClick={() => void startMusic()}>
+              Yes — start music
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setAsked(true);
+                setOnBus(true);
+              }}
+            >
+              Yes, no music
+            </Button>
+            <Button variant="ghost" onClick={() => setAsked(true)}>
+              Not yet — ask again
+            </Button>
+          </div>
+          {asked && !onBus && (
+            <p style={{ marginTop: 12, fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
+              OK — come back when you&apos;re on the bus.
             </p>
-          </>
-        ) : (
-          <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', margin: 0 }}>
-            No songs yet. Import MP3s into <strong>Bus English</strong> or <strong>Bus Tamil</strong> in
-            Music.
-          </p>
-        )}
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
-          <Button variant="secondary" onClick={() => void reload()}>
-            Another random song
-          </Button>
-          <Link to="/music">
-            <Button variant="ghost">Open Music</Button>
-          </Link>
-        </div>
-      </Card>
+          )}
+        </Card>
+      ) : (
+        <Card style={{ marginBottom: 12, textAlign: 'center', padding: '20px 16px' }}>
+          <p style={{ fontWeight: 600, margin: '0 0 6px' }}>On the bus</p>
+          {track ? (
+            <p style={{ margin: '0 0 8px' }}>
+              {playing ? '▶' : '❚❚'} {track.title}
+            </p>
+          ) : (
+            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
+              Music optional
+            </p>
+          )}
+          {err && (
+            <p style={{ color: '#ef4444', fontSize: 'var(--text-sm)' }}>{err}</p>
+          )}
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginTop: 8 }}>
+            <Button variant="secondary" onClick={() => void startMusic()}>
+              Play random
+            </Button>
+            <Button variant="ghost" onClick={() => void skipSong()}>
+              Next random
+            </Button>
+            {playing ? (
+              <Button variant="ghost" onClick={() => musicPlayer.pause()}>
+                Pause
+              </Button>
+            ) : track ? (
+              <Button variant="ghost" onClick={() => void musicPlayer.play()}>
+                Resume
+              </Button>
+            ) : null}
+          </div>
+        </Card>
+      )}
 
       <Card style={{ textAlign: 'center', padding: '16px' }}>
         <Button variant="primary" onClick={onArrived}>

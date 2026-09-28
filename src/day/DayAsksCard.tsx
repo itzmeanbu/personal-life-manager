@@ -38,10 +38,17 @@ const COIMBATORE_NIGHT_EXTRAS: AskItem[] = [
   { id: 'n_pack_kit', label: 'Pack face/hair travel kit', enabled: true },
 ];
 
-export function DayAsksCard({ date = new Date() }: { date?: Date }) {
+export function DayAsksCard({
+  date = new Date(),
+  /** When set, only this slot is shown — no Morning/Leave/Night tab switcher. */
+  forceSlot,
+}: {
+  date?: Date;
+  forceSlot?: AskSlot;
+}) {
   const iso = toIsoDate(date);
   const [state, setState] = useState<DayAsksState | null>(null);
-  const [slot, setSlot] = useState<AskSlot>(() => suggestedSlot(date));
+  const [slot, setSlot] = useState<AskSlot>(() => forceSlot ?? suggestedSlot(date));
   const [items, setItems] = useState<AskItem[]>([]);
   const [customIds, setCustomIds] = useState<Set<string>>(new Set());
   const [newLabel, setNewLabel] = useState('');
@@ -71,8 +78,8 @@ export function DayAsksCard({ date = new Date() }: { date?: Date }) {
   }, [reload]);
 
   useEffect(() => {
-    setSlot(suggestedSlot(date));
-  }, [date]);
+    setSlot(forceSlot ?? suggestedSlot(date));
+  }, [date, forceSlot]);
 
   // Morning notification once per day when morning window opens
   useEffect(() => {
@@ -143,22 +150,24 @@ export function DayAsksCard({ date = new Date() }: { date?: Date }) {
 
   return (
     <Card style={{ marginBottom: 12 }}>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-        {(['morning', 'leave', 'night'] as AskSlot[]).map((s) => {
-          const active = isSlotActive(s, new Date(), morningStartMin);
-          return (
-            <Button
-              key={s}
-              variant={slot === s ? 'primary' : 'ghost'}
-              onClick={() => setSlot(s)}
-              disabled={!active && s === 'night'}
-            >
-              {s === 'morning' ? 'Morning' : s === 'leave' ? 'Leave / college' : 'Night'}
-              {!active && s === 'night' ? ' (later)' : ''}
-            </Button>
-          );
-        })}
-      </div>
+      {!forceSlot && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+          {(['morning', 'leave', 'night'] as AskSlot[]).map((s) => {
+            const active = isSlotActive(s, new Date(), morningStartMin);
+            return (
+              <Button
+                key={s}
+                variant={slot === s ? 'primary' : 'ghost'}
+                onClick={() => setSlot(s)}
+                disabled={!active && s === 'night'}
+              >
+                {s === 'morning' ? 'Morning' : s === 'leave' ? 'Leave / college' : 'Night'}
+                {!active && s === 'night' ? ' (later)' : ''}
+              </Button>
+            );
+          })}
+        </div>
+      )}
 
       <strong>{slotTitle(slot)}</strong>
       <p

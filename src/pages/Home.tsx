@@ -404,20 +404,9 @@ export default function Home() {
         </Card>
         {allows.lateWake && <LateWakeCard date={today.date} wakeMin={wakeMin} />}
         {routineBlock}
-        {allows.leaveAsks && <DayAsksCard date={today.date} />}
+        {allows.leaveAsks && <DayAsksCard date={today.date} forceSlot="morning" />}
         {allows.mealMorning && <MealPrompt date={today.date} />}
-        {allows.timetablePreview && dayOrder != null && (
-          <Card style={{ marginBottom: 12 }}>
-            <strong>Today&apos;s timetable (Day order {dayOrder})</strong>
-            <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 'var(--text-sm)' }}>
-              {schedule.slice(0, 8).map(({ slot, line }) => (
-                <li key={slot.id}>
-                  {formatHm12(formatMinHm(slot.startMin))} — {line}
-                </li>
-              ))}
-            </ul>
-          </Card>
-        )}
+
         {dayOrder == null && !today.isWeekend && (
           <Card style={{ marginBottom: 12 }}>
             <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
@@ -431,10 +420,19 @@ export default function Home() {
             </Link>
           </Card>
         )}
-        <Card style={{ textAlign: 'center', padding: '16px', marginTop: 8 }}>
-          <Button variant="primary" onClick={() => void goLeftHome()}>
-            Leave home → bus
-          </Button>
+        <Card style={{ textAlign: 'center', padding: '20px 16px', marginTop: 8 }}>
+          <p style={{ fontWeight: 600, margin: '0 0 6px' }}>Leaving home now?</p>
+          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', margin: '0 0 12px' }}>
+            Yes → bus phase (asks if you entered the bus, then music).
+          </p>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Button variant="primary" onClick={() => void goLeftHome()}>
+              Yes — left home
+            </Button>
+            <Button variant="ghost" onClick={() => { /* stay in morning */ }}>
+              Not yet
+            </Button>
+          </div>
         </Card>
       </>
     );

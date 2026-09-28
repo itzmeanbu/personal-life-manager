@@ -61,7 +61,7 @@ export function NightPhasePanel({ date = new Date() }: { date?: Date }) {
         </div>
       </Card>
 
-      <DayAsksCard date={date} />
+      <DayAsksCard date={date} forceSlot="night" />
     </div>
   );
 }
